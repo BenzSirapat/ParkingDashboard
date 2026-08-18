@@ -1,0 +1,197 @@
+/* =========================================================================
+   Singha Parking — design system
+   Tokens sourced from the validated data-viz reference palette.
+   ========================================================================= */
+
+:root {
+  /* Surfaces & ink (light) */
+  --page:            #f4f6fb;
+  --surface:         #ffffff;
+  --surface-2:       #f9fafc;
+  --surface-inset:   #f1f4f9;
+  --ink:             #0f1729;
+  --ink-2:           #52514e;
+  --ink-muted:       #8a8f9c;
+  --border:          #e6e9f0;
+  --border-strong:   #d6dbe6;
+
+  /* Brand */
+  --brand:           #2a78d6;
+  --brand-strong:    #1c5cab;
+  --brand-soft:      #eaf2fd;
+  --brand-ink:       #184f95;
+
+  /* Categorical series (light) */
+  --series-1: #2a78d6; /* blue    */
+  --series-2: #1baf7a; /* aqua    */
+  --series-3: #eda100; /* yellow  */
+  --series-4: #4a3aa7; /* violet  */
+  --series-5: #eb6834; /* orange  */
+  --series-6: #e34948; /* red     */
+  --series-7: #e87ba4; /* magenta */
+
+  /* Status */
+  --good:    #0ca30c;
+  --good-ink:#006300;
+  --warn:    #eda100;
+  --danger:  #d03b3b;
+
+  /* Accent washes for stat tiles */
+  --wash-blue:   #eaf2fd;
+  --wash-aqua:   #e4f7f0;
+  --wash-amber:  #fdf3df;
+  --wash-violet: #eeecf9;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 41, .06);
+  --shadow-md: 0 4px 16px rgba(15, 23, 41, .08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 41, .12);
+
+  --radius:    14px;
+  --radius-sm: 10px;
+  --radius-lg: 20px;
+
+  --font: "Kanit", system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --page:            #0d0f14;
+  --surface:         #161a22;
+  --surface-2:       #1b202a;
+  --surface-inset:   #20262f;
+  --ink:             #f4f6fb;
+  --ink-2:           #c3c2b7;
+  --ink-muted:       #8a8f9c;
+  --border:          #262c37;
+  --border-strong:   #333a47;
+
+  --brand:           #3987e5;
+  --brand-strong:    #5598e7;
+  --brand-soft:      #182a3f;
+  --brand-ink:       #9ec5f4;
+
+  --series-1: #3987e5;
+  --series-2: #199e70;
+  --series-3: #c98500;
+  --series-4: #9085e9;
+  --series-5: #d95926;
+  --series-6: #e66767;
+  --series-7: #d55181;
+
+  --good:    #0ca30c;
+  --good-ink:#0ca30c;
+  --warn:    #fab219;
+  --danger:  #e05a5a;
+
+  --wash-blue:   #172536;
+  --wash-aqua:   #10241d;
+  --wash-amber:  #2a2312;
+  --wash-violet: #1e1b30;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.45);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,.55);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--page);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button { font-family: inherit; }
+
+::selection { background: var(--brand-soft); }
+
+/* Scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+
+/* ================= Utility ================= */
+.muted { color: var(--ink-muted); }
+.tnum  { font-variant-numeric: tabular-nums; }
+
+/* ================= Buttons ================= */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--ink);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background .15s, border-color .15s, transform .05s, box-shadow .15s;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--brand); }
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: var(--brand); border-color: var(--brand); color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.btn.primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover { background: var(--surface-inset); border-color: transparent; }
+.btn.sm { padding: 7px 12px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ================= Inputs ================= */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); letter-spacing: .01em; }
+.input, .select {
+  height: 42px; padding: 0 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong); background: var(--surface);
+  color: var(--ink); font-size: 14px; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238a8f9c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  padding-right: 36px; cursor: pointer;
+}
+.input:focus, .select:focus {
+  outline: none; border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.input:disabled, .select:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ================= Card ================= */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ================= Segmented control ================= */
+.segmented {
+  display: inline-flex; padding: 4px; gap: 2px;
+  background: var(--surface-inset); border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.segmented button {
+  border: none; background: transparent; cursor: pointer;
+  padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  color: var(--ink-2); transition: all .15s;
+}
+.segmented button.active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-sm); }
+.segmented button:hover:not(.active) { color: var(--ink); }
+
+/* ================= Badge ================= */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+}
+.badge.up   { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good-ink); }
+.badge.down { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+
+/* Reusable animation */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
