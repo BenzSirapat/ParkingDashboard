@@ -7,11 +7,13 @@ import { NAV_GROUPS, ALL_NAV } from '../nav.js'
 import { IconLogout, IconSun, IconMoon, IconCar, IconMenu } from './icons.jsx'
 import { LangFlag } from './flags.jsx'
 import SiteSwitcher from './SiteSwitcher.jsx'
+import ClockBar from './ClockBar.jsx'
 import { useSite } from '../lib/siteContext.jsx'
+import { roleLabel } from '../lib/usersStore.js'
 import './layout.css'
 
 export default function Layout() {
-  const { user, logout } = useAuth()
+  const { user, logout, canAdmin } = useAuth()
   const { theme, toggle } = useTheme()
   const { t, lang, toggle: toggleLang } = useLang()
   const { isAll, site } = useSite()
@@ -19,6 +21,7 @@ export default function Layout() {
   const [open, setOpen] = useState(false) // mobile drawer
 
   const current = ALL_NAV.find((n) => location.pathname.startsWith(n.to))
+  const groups = NAV_GROUPS.filter((g) => !g.adminOnly || canAdmin)
 
   return (
     <div className={`shell ${open ? 'nav-open' : ''}`}>
@@ -31,7 +34,7 @@ export default function Layout() {
         </div>
 
         <nav className="nav">
-          {NAV_GROUPS.map((group) => (
+          {groups.map((group) => (
             <div className="nav-group" key={group.label}>
               <div className="nav-group-label">{t(group.label)}</div>
               {group.items.map(({ to, label, icon: Icon }) => (
@@ -69,6 +72,7 @@ export default function Layout() {
           </div>
 
           <div className="topbar-actions">
+            <ClockBar />
             <SiteSwitcher />
             <button className="icon-btn lang-btn" title={t('Language')} onClick={toggleLang} aria-label={t('Language')}>
               <LangFlag lang={lang} />
@@ -81,7 +85,7 @@ export default function Layout() {
               <span className="avatar">{user?.name?.[0] ?? 'A'}</span>
               <span className="user-meta">
                 <strong>{user?.name}</strong>
-                <small>{t(user?.role)}</small>
+                <small>{t(roleLabel(user?.role))}</small>
               </span>
             </div>
             <button className="icon-btn" onClick={logout} title={t('Sign out')} aria-label={t('Sign out')}>

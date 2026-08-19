@@ -11,7 +11,7 @@ import { fmtBaht, fmtBaht2, fmtNum, fmtPct } from '../lib/format.js'
 import RangePicker from '../components/RangePicker.jsx'
 import StatCard from '../components/StatCard.jsx'
 import ChartTooltip from '../components/ChartTooltip.jsx'
-import { Panel, Donut, DonutLegend, ProgressRow } from '../components/ui.jsx'
+import { Panel, Donut, DonutLegend, ProgressRow, DataTable } from '../components/ui.jsx'
 import { IconTrendDown, IconChartBar, IconWarning, IconCoins } from '../components/icons.jsx'
 import { useLang } from '../lib/i18n.jsx'
 import { useSite, useSiteTransactions } from '../lib/siteContext.jsx'
@@ -22,6 +22,7 @@ const SERIES = ['var(--series-4)', 'var(--series-1)', 'var(--series-2)', 'var(--
 const C_TENANT = 'var(--series-2)'
 const C_VISITOR = 'var(--series-1)'
 const C_LOSS = 'var(--danger)'
+const C_VEHICLES = 'var(--series-6)'
 
 export default function OpportunityDashboard() {
   const { t } = useLang()
@@ -40,7 +41,9 @@ export default function OpportunityDashboard() {
     tenant: Math.round(c.tenantPaid),
     visitor: Math.round(c.visitorPaid),
     loss: Math.round(c.loss),
+    vehicles: c.vehicles,
   }))
+  const totalVehicles = byCompany.reduce((a, c) => a + c.vehicles, 0)
   const stampSegments = byStamp.slice(0, 6).map((r, i) => ({ label: r.code, value: r.loss, color: SERIES[i % SERIES.length] }))
 
   return (
@@ -76,17 +79,26 @@ export default function OpportunityDashboard() {
         <Panel
           title="Revenue vs Opportunity Loss"
           sub="By company"
-          right={<div className="legend"><span><i style={{ background: C_TENANT }} /> {t('Tenant')}</span><span><i style={{ background: C_VISITOR }} /> {t('Visitor')}</span><span><i style={{ background: C_LOSS }} /> {t('Loss')}</span></div>}
+          right={<div className="legend"><span><i style={{ background: C_TENANT }} /> {t('Tenant')}</span><span><i style={{ background: C_VISITOR }} /> {t('Visitor')}</span><span><i style={{ background: C_LOSS }} /> {t('Loss')}</span><span><i style={{ background: C_VEHICLES }} /> {t('Vehicles')}</span></div>}
         >
           <ResponsiveContainer width="100%" height={340}>
             <BarChart data={chartData} margin={{ top: 6, right: 8, left: -4, bottom: 40 }} barGap={1}>
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10.5, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} angle={-30} textAnchor="end" interval={0} height={60} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={false} width={48} tickFormatter={(v) => fmtNum(v)} />
-              <Tooltip cursor={{ fill: 'var(--surface-inset)' }} content={<ChartTooltip valueFormatter={(v) => fmtBaht(v)} />} />
+              <YAxis yAxisId="veh" orientation="right" tick={{ fontSize: 11, fill: C_VEHICLES }} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => fmtNum(v)} />
+              <Tooltip
+                cursor={{ fill: 'var(--surface-inset)' }}
+                content={
+                  <ChartTooltip
+                    valueFormatter={(v, key) => (key === 'vehicles' ? `${fmtNum(v)} ${t('vehicles')}` : fmtBaht(v))}
+                  />
+                }
+              />
               <Bar dataKey="tenant" name="Tenant Revenue" fill={C_TENANT} radius={[3, 3, 0, 0]} maxBarSize={12} />
               <Bar dataKey="visitor" name="Visitor Revenue" fill={C_VISITOR} radius={[3, 3, 0, 0]} maxBarSize={12} />
               <Bar dataKey="loss" name="Opportunity Loss" fill={C_LOSS} radius={[3, 3, 0, 0]} maxBarSize={12} />
+              <Bar yAxisId="veh" dataKey="vehicles" name="Vehicles" fill={C_VEHICLES} radius={[3, 3, 0, 0]} maxBarSize={12} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -94,10 +106,49 @@ export default function OpportunityDashboard() {
         <Panel title="Distribution by Stamp Code" sub="Loss share per code">
           <div className="donut-block">
             <Donut segments={stampSegments} centerTop={fmtNum(s.totalVehicles)} centerSub={t('vehicles')} />
-            <DonutLegend items={byStamp.slice(0, 6).map((r, i) => ({ label: r.code, value: fmtBaht(r.loss), color: SERIES[i % SERIES.length] }))} />
+            <DonutLegend items={byStamp.slice(0, 6).map((r, i) => ({ label: `${r.code} · ${fmtNum(r.vehicles)} ${t('vehicles')}`, value: fmtBaht(r.loss), color: SERIES[i % SERIES.length] }))} />
           </div>
         </Panel>
       </div>
+
+      <Panel
+        title="Opportunity Loss by Company"
+        sub="Vehicle count next to the money lost"
+        right={<span className="chip">{fmtNum(totalVehicles)} {t('vehicles')}</span>}
+      >
+        <DataTable
+          maxHeight={380}
+          empty="No stamp usage in range."
+          columns={[
+            { key: 'name', label: 'Company', render: (r) => <strong>{r.name}</strong> },
+            { key: 'vehicles', label: 'Vehicles', align: 'right', render: (r) => fmtNum(r.vehicles) },
+            { key: 'vehiclePct', label: 'Vehicle Share', align: 'right', render: (r) => fmtPct(r.vehiclePct) },
+            { key: 'tenantPaid', label: 'Tenant Paid', align: 'right', render: (r) => fmtBaht(r.tenantPaid) },
+            { key: 'visitorPaid', label: 'Visitor Paid', align: 'right', render: (r) => fmtBaht(r.visitorPaid) },
+            { key: 'loss', label: 'Opportunity Loss', align: 'right', render: (r) => <strong className="money-red">{fmtBaht(r.loss)}</strong> },
+            { key: 'lossPerVehicle', label: 'Loss / Vehicle', align: 'right', render: (r) => fmtBaht2(r.lossPerVehicle) },
+            { key: 'pctOfLoss', label: 'Share of Loss', align: 'right', render: (r) => fmtPct(r.pctOfLoss) },
+          ]}
+          rows={byCompany.map((c) => ({
+            ...c,
+            _key: c.companyId,
+            vehiclePct: totalVehicles ? (c.vehicles / totalVehicles) * 100 : 0,
+            lossPerVehicle: c.vehicles ? c.loss / c.vehicles : 0,
+          }))}
+          footer={
+            <>
+              <td><strong>{t('Total')}</strong></td>
+              <td className="num tnum"><strong>{fmtNum(totalVehicles)}</strong></td>
+              <td className="num tnum">100.0%</td>
+              <td className="num tnum">{fmtBaht(s.tenantRevenue)}</td>
+              <td className="num tnum">{fmtBaht(s.visitorRevenue)}</td>
+              <td className="num tnum"><strong className="money-red">{fmtBaht(s.totalLoss)}</strong></td>
+              <td className="num tnum">{fmtBaht2(s.avgLoss)}</td>
+              <td className="num tnum">100.0%</td>
+            </>
+          }
+        />
+      </Panel>
 
       <div className="two-col">
         <Panel title="Top Loss Companies" sub="Ranked by opportunity loss">

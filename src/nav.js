@@ -1,9 +1,9 @@
 import {
   IconChartBar, IconArrowIn, IconTag, IconCar, IconWarning,
-  IconReceipt, IconDoc, IconGlobe, IconUsers, IconWallet,
+  IconReceipt, IconDoc, IconGlobe, IconUsers, IconWallet, IconUser,
 } from './components/icons.jsx'
 
-// Two groups mirror the reference: Dashboards (grid marker) + Reports (dot marker).
+// Dashboards (grid marker) + Reports (dot marker) + Administration (admin only).
 export const NAV_GROUPS = [
   {
     label: 'Dashboards',
@@ -14,6 +14,7 @@ export const NAV_GROUPS = [
       { to: '/stamps', label: 'Stamp Dashboard', icon: IconTag },
       { to: '/vehicles', label: 'Vehicle Dashboard', icon: IconCar },
       { to: '/opportunity', label: 'Opportunity Loss Dashboard', icon: IconWarning },
+      { to: '/gates', label: 'Emergency Barrier', icon: IconWarning },
     ],
   },
   {
@@ -27,9 +28,19 @@ export const NAV_GROUPS = [
       { to: '/reports/opportunity-loss', label: 'Opportunity Loss Summary', icon: IconWarning },
       { to: '/reports/vehicle-volume', label: 'Vehicle Volume Time Period', icon: IconCar },
       { to: '/reports/member-visitor', label: 'Dashboard Member Visitor', icon: IconUsers },
+      { to: '/tax-invoices', label: 'ABB & Tax Invoices', icon: IconReceipt },
       // { to: '/reports/discount', label: 'Discount Report', icon: IconTag },
       // { to: '/reports/package-member', label: 'Package Member Report', icon: IconUsers },
       // { to: '/reports/cash-online', label: 'Cash or Online Payment', icon: IconWallet },
+    ],
+  },
+  {
+    // Only rendered for users whose role allows account management.
+    label: 'Administration',
+    kind: 'report',
+    adminOnly: true,
+    items: [
+      { to: '/users', label: 'User Management', icon: IconUser },
     ],
   },
 ]

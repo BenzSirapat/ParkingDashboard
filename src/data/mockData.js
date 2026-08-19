@@ -122,114 +122,141 @@ function computeParkingFee(durationMin) {
   return Math.min(hours * RATE_PER_HOUR, DAILY_CAP)
 }
 
+/** Days of history the mock engine produces — a full rolling year so every
+ *  dashboard can be viewed "accumulated for the whole year". */
+export const HISTORY_DAYS = 365
+
+const DAY_MS = 86400000
+
+/** Calendar-day key (yyyymmdd) used both for seeding and for ABB numbering. */
+function dayKey(d) {
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()
+}
+
+/** Days since epoch — gives every calendar day a stable ordinal for ids. */
+const dayOrdinal = (d) => Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / DAY_MS)
+
 /**
- * Generate `days` of parking transactions for ONE site, ending today.
- * `startId` keeps ids unique across sites; returns records sorted by entry time.
+ * Generate ONE calendar day of transactions for ONE site.
+ * The RNG is seeded from (site, calendar day) so a day always produces the
+ * exact same rows no matter how wide the requested window is — switching
+ * between "Last 7 days" and "This year" never reshuffles the numbers.
  */
-function generateForSite(site, days, startId) {
-  const rng = makeRng(site.seed)
-  const today = startOfDay(new Date())
+function generateDay(site, day, siteIndex) {
+  const key = dayKey(day)
+  const rng = makeRng(site.seed + key * 7919 + siteIndex * 104729)
   const now = Date.now()
-  const records = []
-  let id = startId
+  const dow = day.getDay()
+  const base = (dow === 0 || dow === 6 ? 200 : 150) * site.scale // weekends busier
+  const count = Math.round(base * (0.85 + rng() * 0.3))
+  const idBase = dayOrdinal(day) * 100000 + siteIndex * 20000
+  const rows = []
 
-  for (let d = days - 1; d >= 0; d--) {
-    const day = new Date(today)
-    day.setDate(day.getDate() - d)
-    const dow = day.getDay()
-    const base = (dow === 0 || dow === 6 ? 560 : 420) * site.scale // weekends busier
-    const count = Math.round(base * (0.85 + rng() * 0.3))
+  for (let i = 0; i < count; i++) {
+    const isMember = rng() < site.memberBias
+    const vehicleClass = isMember
+      ? rng() < 0.8 ? 'regular' : 'temporary'
+      : rng() < 0.25 ? 'regular' : 'temporary'
 
-    for (let i = 0; i < count; i++) {
-      const isMember = rng() < site.memberBias
-      const vehicleClass = isMember
-        ? rng() < 0.8 ? 'regular' : 'temporary'
-        : rng() < 0.25 ? 'regular' : 'temporary'
+    const hour = weightedIndex(rng, ENTRY_WEIGHTS)
+    const minute = Math.floor(rng() * 60)
+    const entry = new Date(day)
+    entry.setHours(hour, minute, Math.floor(rng() * 60), 0)
 
-      const hour = weightedIndex(rng, ENTRY_WEIGHTS)
-      const minute = Math.floor(rng() * 60)
-      const entry = new Date(day)
-      entry.setHours(hour, minute, Math.floor(rng() * 60), 0)
+    // ~4% of vehicles are left in the building overnight (10–20 h stays).
+    const staysOvernight = rng() < 0.04
+    const durationMin = staysOvernight
+      ? Math.round(600 + rng() * 600)
+      : Math.round(isMember ? 70 + rng() * 260 : 40 + rng() * 200)
+    const exitMs = entry.getTime() + durationMin * 60000
 
-      const durationMin = Math.round(isMember ? 70 + rng() * 260 : 40 + rng() * 200)
-      const exitMs = entry.getTime() + durationMin * 60000
+    // A slice of recent vehicles are still inside (no exit yet). Anything that
+    // should have left more than a day ago is always closed off, so history
+    // never accumulates cars that "never came out".
+    const stale = exitMs < now - DAY_MS
+    const exited = exitMs < now && (stale || rng() > 0.04)
+    const exit = exited ? new Date(exitMs) : null
 
-      // A slice of vehicles are still inside (no exit yet).
-      const exited = exitMs < now && rng() > 0.04
-      const exit = exited ? new Date(exitMs) : null
+    // "Overnight" = the stay crosses a calendar-day boundary. Vehicles still
+    // inside count once the current day has moved past their entry day.
+    const refMs = exited ? exitMs : now
+    const overnight = refMs >= startOfDay(entry).getTime() + DAY_MS
 
-      const grossParking = computeParkingFee(durationMin)
+    const grossParking = computeParkingFee(durationMin)
 
-      // Stamp validation.
-      let companyId = null
-      let stampCode = null
-      let stampDiscount = 0
-      const hasStamp = rng() < (isMember ? 0.3 : 0.66)
-      if (hasStamp) {
-        const stamp = pick(rng, STAMP_CODES)
-        stampCode = stamp.code
-        companyId = stamp.companyId
-        stampDiscount = Math.min(stamp.rate, grossParking)
-      }
-      const memberWaiver = isMember && !hasStamp ? grossParking : 0
-
-      const lostCardFee = rng() < 0.015 ? 100 : 0
-      const overnightFee = durationMin > 20 * 60 ? 200 : 0
-
-      const parkingFee = Math.max(0, grossParking - stampDiscount - memberWaiver)
-      const subtotal = parkingFee + lostCardFee + overnightFee
-      const vat = +(subtotal * VAT_RATE).toFixed(2)
-      const total = +(subtotal).toFixed(2) // fees shown are VAT-inclusive
-      const payment = exited ? pickPayment(rng) : null
-
-      records.push({
-        id: id++,
-        siteId: site.id,
-        cardNo: String(100000 + Math.floor(rng() * 899999)),
-        plate: makePlate(rng),
-        province: pick(rng, PROVINCES),
-        type: isMember ? 'member' : 'visitor',
-        vehicleClass,
-        entryTime: entry.toISOString(),
-        exitTime: exit ? exit.toISOString() : null,
-        status: exited ? 'exited' : 'inside',
-        durationMin: exited ? durationMin : Math.round((now - entry.getTime()) / 60000),
-        parkingFee,
-        lostCardFee,
-        overnightFee,
-        grossParking,
-        stampDiscount,
-        vat,
-        total,
-        payment: payment ? payment.key : null,
-        channel: payment ? payment.channel : null,
-        companyId,
-        stampCode,
-      })
+    // Stamp validation.
+    let companyId = null
+    let stampCode = null
+    let stampDiscount = 0
+    const hasStamp = rng() < (isMember ? 0.3 : 0.66)
+    if (hasStamp) {
+      const stamp = pick(rng, STAMP_CODES)
+      stampCode = stamp.code
+      companyId = stamp.companyId
+      stampDiscount = Math.min(stamp.rate, grossParking)
     }
-  }
+    const memberWaiver = isMember && !hasStamp ? grossParking : 0
 
-  records.sort((a, b) => new Date(a.entryTime) - new Date(b.entryTime))
-  return records
+    const lostCardFee = rng() < 0.015 ? 100 : 0
+    const overnightFee = overnight ? 200 : 0
+
+    const parkingFee = Math.max(0, grossParking - stampDiscount - memberWaiver)
+    const subtotal = parkingFee + lostCardFee + overnightFee
+    const vat = +(subtotal * VAT_RATE).toFixed(2)
+    const total = +(subtotal).toFixed(2) // fees shown are VAT-inclusive
+    const payment = exited ? pickPayment(rng) : null
+
+    rows.push({
+      id: idBase + i,
+      siteId: site.id,
+      cardNo: String(100000 + Math.floor(rng() * 899999)),
+      plate: makePlate(rng),
+      province: pick(rng, PROVINCES),
+      type: isMember ? 'member' : 'visitor',
+      vehicleClass,
+      entryTime: entry.toISOString(),
+      exitTime: exit ? exit.toISOString() : null,
+      status: exited ? 'exited' : 'inside',
+      durationMin: exited ? durationMin : Math.round((now - entry.getTime()) / 60000),
+      overnight,
+      parkingFee,
+      lostCardFee,
+      overnightFee,
+      grossParking,
+      stampDiscount,
+      vat,
+      total,
+      payment: payment ? payment.key : null,
+      channel: payment ? payment.channel : null,
+      companyId,
+      stampCode,
+      // Abbreviated tax invoice (ใบกำกับภาษีอย่างย่อ) — issued automatically by
+      // the pay station on every completed exit.
+      abbNo: exited ? `ABB-${key}-${String(i + 1).padStart(4, '0')}` : null,
+    })
+  }
+  return rows
 }
 
 /**
  * Generate `days` of transactions across every site, tagged with `siteId`.
  * Consumers filter by site (or keep them all for the consolidated view).
  */
-export function generateTransactions(days = 30, sites = SITES) {
+export function generateTransactions(days = HISTORY_DAYS, sites = SITES) {
+  const today = startOfDay(new Date())
   const all = []
-  let nextId = 1
-  for (const site of sites) {
-    const rows = generateForSite(site, days, nextId)
-    nextId += rows.length
-    all.push(...rows)
+  for (let s = 0; s < sites.length; s++) {
+    for (let d = days - 1; d >= 0; d--) {
+      const day = new Date(today)
+      day.setDate(day.getDate() - d)
+      all.push(...generateDay(sites[s], day, s))
+    }
   }
-  all.sort((a, b) => new Date(a.entryTime) - new Date(b.entryTime))
+  all.sort((a, b) => (a.entryTime < b.entryTime ? -1 : a.entryTime > b.entryTime ? 1 : 0))
   return all
 }
 
-// Generated once per session.
+// Generated once per session — a rolling 12 months of history.
 export const TRANSACTIONS = generateTransactions()
 
 export const companyName = (id) => COMPANIES.find((c) => c.id === id)?.name ?? '—'

@@ -5,8 +5,9 @@ import {
 import { resolveRange, DEFAULT_RANGE, rangeLabel } from '../lib/dateRange.js'
 import {
   filterByRange, salesStats, hourlyRevenue, paymentBreakdown, recentTransactions,
+  abbStats, abbByDay,
 } from '../lib/selectors.js'
-import { fmtBaht, fmtBaht2, fmtNum, fmtHour, fmtTime } from '../lib/format.js'
+import { fmtBaht, fmtBaht2, fmtNum, fmtHour, fmtTime, fmtDate } from '../lib/format.js'
 import RangePicker from '../components/RangePicker.jsx'
 import StatCard from '../components/StatCard.jsx'
 import ChartTooltip from '../components/ChartTooltip.jsx'
@@ -36,6 +37,8 @@ export default function SalesDashboard() {
   const hourly = useMemo(() => hourlyRevenue(txns), [txns])
   const payments = useMemo(() => paymentBreakdown(txns), [txns])
   const recent = useMemo(() => recentTransactions(txns.filter((t) => t.status === 'exited'), 8), [txns])
+  const abb = useMemo(() => abbStats(txns), [txns])
+  const abbDaily = useMemo(() => abbByDay(txns).slice(0, 14), [txns])
 
   const paySegments = payments.map((p) => ({ label: p.key, value: p.count, color: PAY_COLORS[p.key] || 'var(--series-4)' }))
 
@@ -93,6 +96,40 @@ export default function SalesDashboard() {
           </div>
         </Panel>
       </div>
+
+      <Panel
+        title="ABB Summary"
+        sub="Abbreviated tax invoices (ใบกำกับภาษีอย่างย่อ) issued at the pay stations"
+        right={
+          <div className="legend">
+            <span>{t('Issued')}: <strong>{fmtNum(abb.count)}</strong></span>
+            <span>{t('Total')}: <strong>{fmtBaht(abb.amount)}</strong></span>
+            <span>{t('VAT')}: <strong>{fmtBaht(abb.vat)}</strong></span>
+          </div>
+        }
+      >
+        <div className="stat-grid cols-4 flush">
+          <StatCard icon={IconReceipt} tone="blue" label="ABB Issued" value={fmtNum(abb.count)} sub="Receipts" />
+          <StatCard icon={IconCoins} tone="green" valueClass="money-green" label="ABB Net" value={fmtBaht(abb.net)} sub="Before VAT" />
+          <StatCard icon={IconFile} tone="amber" label="ABB VAT" value={fmtBaht(abb.vat)} sub="7% included" />
+          <StatCard icon={IconWallet} tone="violet" label="Cash / Online" value={`${fmtNum(abb.byChannel.cash)} / ${fmtNum(abb.byChannel.online)}`} sub="By channel" />
+        </div>
+
+        <DataTable
+          maxHeight={320}
+          empty="No ABB receipts in this range."
+          columns={[
+            { key: 'day', label: 'Date', render: (r) => fmtDate(r.day, { day: '2-digit', month: 'short', year: 'numeric' }) },
+            { key: 'count', label: 'ABB Count', align: 'right', render: (r) => fmtNum(r.count) },
+            { key: 'firstNo', label: 'First No.' },
+            { key: 'lastNo', label: 'Last No.' },
+            { key: 'net', label: 'Net', align: 'right', render: (r) => fmtBaht2(r.net) },
+            { key: 'vat', label: 'VAT', align: 'right', render: (r) => fmtBaht2(r.vat) },
+            { key: 'amount', label: 'Total', align: 'right', render: (r) => <strong>{fmtBaht2(r.amount)}</strong> },
+          ]}
+          rows={abbDaily.map((r) => ({ ...r, _key: r.day }))}
+        />
+      </Panel>
 
       <Panel title="Recent Transactions" sub="Latest paid exits">
         <DataTable

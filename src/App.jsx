@@ -8,6 +8,9 @@ import TransactionDashboard from './pages/TransactionDashboard.jsx'
 import StampDashboard from './pages/StampDashboard.jsx'
 import VehicleDashboard from './pages/VehicleDashboard.jsx'
 import OpportunityDashboard from './pages/OpportunityDashboard.jsx'
+import GateControl from './pages/GateControl.jsx'
+import TaxInvoicePage from './pages/TaxInvoicePage.jsx'
+import UserManagement from './pages/UserManagement.jsx'
 
 import SalesTaxReport from './pages/reports/SalesTaxReport.jsx'
 import VehicleTransactionReport from './pages/reports/VehicleTransactionReport.jsx'
@@ -39,6 +42,9 @@ export default function App() {
         <Route path="/stamps" element={<StampDashboard />} />
         <Route path="/vehicles" element={<VehicleDashboard />} />
         <Route path="/opportunity" element={<OpportunityDashboard />} />
+        <Route path="/gates" element={<GateControl />} />
+        <Route path="/tax-invoices" element={<TaxInvoicePage />} />
+        <Route path="/users" element={<UserManagement />} />
 
         <Route path="/reports/sales-tax" element={<SalesTaxReport />} />
         <Route path="/reports/vehicle-transaction" element={<VehicleTransactionReport />} />

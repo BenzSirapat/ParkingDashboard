@@ -174,3 +174,119 @@ table.data tbody tr.clickable { cursor: pointer; }
 .report-title-sub { margin: 0 0 18px; font-size: 13px; color: var(--ink-muted); }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+/* =========================================================================
+   Additions: range picker, banners, modals, forms, gate control, tax invoices
+   ========================================================================= */
+
+/* ---- Range picker (quick presets + accumulated ranges + custom) ---- */
+.range-picker { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.range-picker .range-more { min-width: 150px; }
+.range-picker .range-custom { display: flex; align-items: center; gap: 8px; }
+.range-picker .range-custom .input { width: 152px; }
+.range-custom-btn { white-space: nowrap; }
+.segmented.small button { padding: 5px 11px; font-size: 12px; }
+
+/* ---- Panel head controls ---- */
+.panel-filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.search-box { position: relative; display: inline-flex; align-items: center; }
+.search-box svg { position: absolute; left: 10px; color: var(--ink-muted); pointer-events: none; }
+.search-box .input { padding-left: 32px; min-width: 210px; }
+
+/* ---- Inline banners ---- */
+.banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 15px; margin-bottom: 14px;
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+  border: 1px solid transparent;
+}
+.banner.ok { background: color-mix(in srgb, var(--good) 12%, transparent); color: var(--good-ink); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+.banner.danger { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+.banner.warn { background: var(--wash-amber); color: #8a6100; border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+:root[data-theme="dark"] .banner.ok { color: var(--good); }
+:root[data-theme="dark"] .banner.warn { color: var(--warn); }
+
+.selection-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 14px; margin-bottom: 12px;
+  background: var(--brand-soft); color: var(--brand-ink);
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+}
+.selection-bar .btn { margin-left: auto; }
+
+.note-row {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px; color: var(--ink-muted);
+}
+
+/* ---- Small table-row buttons ---- */
+.btn.tiny { padding: 4px 9px; font-size: 11.5px; border-radius: 8px; gap: 5px; }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger:hover { background: color-mix(in srgb, var(--danger) 85%, #000); border-color: color-mix(in srgb, var(--danger) 85%, #000); }
+.row-actions { display: inline-flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+
+.pill.warn { background: var(--wash-amber); color: #8a6100; }
+.pill.danger { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.pill.role-admin { background: color-mix(in srgb, var(--series-6) 14%, transparent); color: var(--series-6); }
+.pill.role-manager { background: var(--wash-violet); color: var(--series-4); }
+.pill.role-operator { background: var(--wash-blue); color: var(--series-1); }
+.pill.role-viewer { background: var(--surface-inset); color: var(--ink-muted); }
+:root[data-theme="dark"] .pill.warn { color: var(--warn); }
+
+/* ---- Modal ---- */
+.modal-scrim {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(15, 23, 41, .5);
+  display: grid; place-items: center; padding: 24px;
+  backdrop-filter: blur(2px);
+}
+.modal {
+  width: 100%; max-height: 88vh; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg);
+}
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 18px 20px 12px; }
+.modal-title { margin: 0; font-size: 16px; font-weight: 720; }
+.modal-sub { margin: 3px 0 0; font-size: 12.5px; color: var(--ink-muted); }
+.modal-body { padding: 4px 20px 18px; overflow-y: auto; }
+.modal-message { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); }
+
+/* ---- Forms inside modals ---- */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid .span-2 { grid-column: span 2; }
+@media (max-width: 620px) { .form-grid { grid-template-columns: 1fr; } .form-grid .span-2 { grid-column: span 1; } }
+.check-row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-2); padding-top: 9px; }
+.check-row input { width: 16px; height: 16px; accent-color: var(--brand); }
+
+.invoice-summary {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 15px; background: var(--surface-inset);
+  border-radius: var(--radius-sm); font-size: 13.5px;
+}
+.invoice-summary strong { font-size: 17px; font-weight: 760; }
+
+/* ---- Emergency barrier control ---- */
+.gate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.gate-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 15px 16px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-left: 4px solid var(--series-1);
+  border-radius: var(--radius-sm);
+}
+.gate-card.exit { border-left-color: var(--series-5); }
+.gate-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gate-dir { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: .03em; }
+.gate-device { font-size: 11px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.gate-name { font-size: 14.5px; font-weight: 700; }
+.gate-site { font-size: 12px; color: var(--ink-muted); }
+.gate-btn { margin-top: 10px; justify-content: center; }
+.gate-confirm { display: flex; flex-direction: column; gap: 3px; padding: 12px 15px; background: var(--surface-inset); border-radius: var(--radius-sm); }
+.gate-confirm .muted { font-size: 12.5px; }
+
+/* ---- Flush stat grid inside a panel ---- */
+.stat-grid.flush { margin-bottom: 16px; }
+.stat-grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }

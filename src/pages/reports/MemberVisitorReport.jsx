@@ -54,6 +54,7 @@ export default function MemberVisitorReport() {
       chartTitle="Hourly statistics"
       filters={[
         { id: 'range', label: 'Date range', type: 'daterange', colSpan: 2 },
+        { id: 'plate', label: 'Search license plate', type: 'text', placeholder: 'e.g. 1กข 1234', colSpan: 2 },
         { id: 'cardType', label: 'Type', type: 'select', options: cardTypeOptions },
         { id: 'vehicleClass', label: 'Vehicle type', type: 'select', options: vehicleClassOptions },
         { id: 'company', label: 'Tenant', type: 'select', options: companyOptions },
@@ -61,7 +62,7 @@ export default function MemberVisitorReport() {
       ]}
       columns={[
         { key: 'cardNo', label: 'Member / Card No.', render: (r) => <strong>{r.cardNo}</strong> },
-        { key: 'plate', label: 'License Plate' },
+        { key: 'plate', label: 'License Plate', render: (r) => <strong>{r.plate}</strong> },
         { key: 'type', label: 'Type', render: (r) => <span className={`pill ${r.type}`}>{tr(r.type)}</span> },
         { key: 'entry', label: 'Entry' },
         { key: 'exit', label: 'Exit' },

@@ -1,0 +1,15 @@
+Dashboard
+    เปิดไม้กั้นฉุกเฉิน
+    User delete
+    User edit
+    ข้อมูลให้สามารถเรียกดูได้สะสมทั้งปี
+    สรุปจอดรถค้างคืนแยก member,visitor จำนวนคัน
+    สรุป ABB
+    ออกใบกำกับเต็มรูป
+    อออกใบกำกับเต็มรูปนำส่ง e-tax ให้ลูกค้าเรียบร้อย
+    Opportunity Loss Dashboard เพิ่มจำนวนคัน
+    แสดงเวลา sever และเวลาปัจจุบัน
+    member และ visitor ต้องให้ search จาก ทะเบียน
+
+Transaction Dashboard 
+    BarChart  Traffic ทำให้รองรับการแสดงผลเป็นวันด้วย

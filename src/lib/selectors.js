@@ -347,3 +347,124 @@ export function opportunityByStamp(txns) {
   }
   return [...map.values()].sort((a, b) => b.loss - a.loss)
 }
+
+/* -------------------------------------------------------------- Overnight */
+
+/**
+ * Vehicles parked overnight (the stay crosses a calendar-day boundary),
+ * split by member / visitor. `stillInside` are the ones that never came out.
+ */
+export function overnightStats(txns) {
+  const rows = txns.filter((t) => t.overnight)
+  const member = rows.filter((t) => t.type === 'member')
+  const visitor = rows.filter((t) => t.type === 'visitor')
+  const avg = (list) => (list.length ? sum(list, (t) => t.durationMin) / list.length : 0)
+  return {
+    total: rows.length,
+    member: member.length,
+    visitor: visitor.length,
+    memberPct: rows.length ? (member.length / rows.length) * 100 : 0,
+    visitorPct: rows.length ? (visitor.length / rows.length) * 100 : 0,
+    stillInside: rows.filter((t) => t.status === 'inside').length,
+    fees: sum(rows, (t) => t.overnightFee),
+    avgDurationMin: avg(rows),
+    memberAvgMin: avg(member),
+    visitorAvgMin: avg(visitor),
+    pctOfEntries: txns.length ? (rows.length / txns.length) * 100 : 0,
+  }
+}
+
+/** Overnight vehicle count per day, split member / visitor. */
+export function overnightByDay(txns) {
+  const map = new Map()
+  for (const t of txns) {
+    if (!t.overnight) continue
+    const day = t.entryTime.slice(0, 10)
+    if (!map.has(day)) map.set(day, { day, member: 0, visitor: 0, total: 0 })
+    const row = map.get(day)
+    row[t.type]++
+    row.total++
+  }
+  return [...map.values()].sort((a, b) => (a.day < b.day ? -1 : 1))
+}
+
+/* ------------------------------------------------------------ Daily buckets */
+
+/** Entries vs exits bucketed by calendar day (the "per day" traffic view). */
+export function dailyTraffic(txns) {
+  const map = new Map()
+  const touch = (day) => {
+    if (!map.has(day)) map.set(day, { day, entries: 0, exits: 0 })
+    return map.get(day)
+  }
+  for (const t of txns) {
+    touch(t.entryTime.slice(0, 10)).entries++
+    if (t.exitTime) touch(t.exitTime.slice(0, 10)).exits++
+  }
+  return [...map.values()].sort((a, b) => (a.day < b.day ? -1 : 1))
+}
+
+/** Revenue bucketed by calendar day (exit date = the day it was collected). */
+export function dailyRevenue(txns) {
+  const map = new Map()
+  for (const t of txns) {
+    if (t.status !== 'exited' || !t.exitTime) continue
+    const day = t.exitTime.slice(0, 10)
+    if (!map.has(day)) map.set(day, { day, revenue: 0, vat: 0, transactions: 0 })
+    const row = map.get(day)
+    row.revenue += t.total
+    row.vat += t.vat
+    row.transactions++
+  }
+  return [...map.values()].sort((a, b) => (a.day < b.day ? -1 : 1))
+}
+
+/* -------------------------------------------------- ABB / full tax invoices */
+
+/**
+ * Abbreviated tax invoices (ใบกำกับภาษีอย่างย่อ) issued by the pay stations.
+ * One ABB per completed, paid exit.
+ */
+export function abbStats(txns) {
+  const issued = txns.filter((t) => t.abbNo)
+  const amount = sum(issued, (t) => t.total)
+  const vat = sum(issued, (t) => t.vat)
+  return {
+    count: issued.length,
+    amount,
+    vat,
+    net: amount - vat,
+    avg: issued.length ? amount / issued.length : 0,
+    byChannel: {
+      cash: issued.filter((t) => t.channel === 'cash').length,
+      online: issued.filter((t) => t.channel === 'online').length,
+    },
+  }
+}
+
+/** ABB totals per calendar day — the daily ABB summary (สรุป ABB). */
+export function abbByDay(txns) {
+  const map = new Map()
+  for (const t of txns) {
+    if (!t.abbNo || !t.exitTime) continue
+    const day = t.exitTime.slice(0, 10)
+    if (!map.has(day)) map.set(day, { day, count: 0, amount: 0, vat: 0, cash: 0, online: 0, firstNo: t.abbNo, lastNo: t.abbNo })
+    const row = map.get(day)
+    row.count++
+    row.amount += t.total
+    row.vat += t.vat
+    if (t.channel === 'cash') row.cash++
+    else row.online++
+    if (t.abbNo < row.firstNo) row.firstNo = t.abbNo
+    if (t.abbNo > row.lastNo) row.lastNo = t.abbNo
+  }
+  return [...map.values()]
+    .map((r) => ({ ...r, net: r.amount - r.vat }))
+    .sort((a, b) => (a.day < b.day ? 1 : -1))
+}
+
+/** Find the transactions behind a set of ABB numbers (invoice issuing). */
+export function findByAbb(txns, abbNos) {
+  const want = new Set(abbNos)
+  return txns.filter((t) => t.abbNo && want.has(t.abbNo))
+}
