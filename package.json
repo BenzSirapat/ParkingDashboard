@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Parking system dashboard (Vite + React, mock data)",
+  "homepage": "/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
