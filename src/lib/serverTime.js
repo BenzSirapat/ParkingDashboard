@@ -1,39 +1,32 @@
 import { useEffect, useState } from 'react'
+import { systemApi } from './api.js'
 
 /* =========================================================================
    Server clock.
 
-   The dashboard shows two clocks side by side: the parking SERVER's time
-   (the clock that stamps every entry / exit record) and the CURRENT time of
-   the machine the browser runs on. When an operator's PC drifts, the gap is
+   The dashboard shows two clocks side by side: the parking SERVER's time (the
+   clock that stamps every entry / exit record) and the current time of the
+   machine the browser runs on. When an operator's PC drifts, the gap is
    visible instead of silently corrupting shift hand-overs.
-
-   `fetchServerTime()` is the only piece that talks to the backend — swap the
-   simulated response for `GET /api/server-time` against the C# service and
-   everything else keeps working.
    ========================================================================= */
 
 /** Timezone the parking server runs in. */
 export const SERVER_TZ = 'Asia/Bangkok'
 
-// Simulated backend skew, fixed for the session (a real server is never
-// perfectly in step with the browser).
-const SIMULATED_SKEW_MS = 2400
-
 /**
- * Ask the backend for its clock. Returns the offset (server − browser) in ms
- * and the round-trip latency, both measured the NTP way so network delay does
- * not get counted as drift.
+ * Ask the API for its clock. Returns the offset (server − browser) in ms and
+ * the round-trip latency, both measured the NTP way so network delay does not
+ * get counted as drift.
  */
-export async function fetchServerTime() {
+export async function fetchServerTime(signal) {
   const t0 = Date.now()
-  // --- replace with: const res = await fetch('/api/server-time') ---
-  await new Promise((r) => setTimeout(r, 60 + Math.random() * 90))
-  const serverNow = Date.now() + SIMULATED_SKEW_MS
-  // ----------------------------------------------------------------
+  const res = await systemApi.serverTime(signal)
   const t1 = Date.now()
+
   const latency = t1 - t0
-  return { offset: serverNow - (t0 + latency / 2), latency, syncedAt: t1 }
+  const serverNow = new Date(res.utc ?? res.now).getTime()
+
+  return { offset: serverNow - (t0 + latency / 2), latency, syncedAt: t1, timeZone: res.timeZone }
 }
 
 /**
@@ -48,17 +41,20 @@ export function useServerClock({ resyncMs = 300000 } = {}) {
 
   useEffect(() => {
     let alive = true
+    const controller = new AbortController()
+
     const run = async () => {
       try {
-        const s = await fetchServerTime()
+        const s = await fetchServerTime(controller.signal)
         if (alive) setSync({ ...s, synced: true })
-      } catch {
-        if (alive) setSync((s) => ({ ...s, synced: false }))
+      } catch (err) {
+        if (alive && err?.name !== 'AbortError') setSync((s) => ({ ...s, synced: false }))
       }
     }
+
     run()
     const id = setInterval(run, resyncMs)
-    return () => { alive = false; clearInterval(id) }
+    return () => { alive = false; clearInterval(id); controller.abort() }
   }, [resyncMs])
 
   useEffect(() => {

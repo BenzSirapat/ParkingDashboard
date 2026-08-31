@@ -1,41 +1,35 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { SITES, TRANSACTIONS } from '../data/mockData.js'
+import { createContext, useContext, useMemo } from 'react'
+import { masterApi } from './api.js'
+import { useApi } from './useApi.js'
 
-const KEY = 'singha-parking-site'
+/* =========================================================================
+   The site this dashboard is pointed at.
 
-/** Sentinel meaning "consolidate every site into one roll-up". */
-export const ALL_SITES = 'all'
+   One API deployment serves one site and one database, so there is nothing to
+   switch between and no site filter to apply — the name is a label read from
+   GET /api/master/site. To look at another site, point VITE_API_BASE at that
+   site's API.
+   ========================================================================= */
+
+const FALLBACK = { name: 'Singha Parking', short: 'Singha Parking', area: null, environment: null }
 
 const SiteContext = createContext(null)
 
 export function SiteProvider({ children }) {
-  const [siteId, setSiteId] = useState(() => {
-    try {
-      const saved = localStorage.getItem(KEY)
-      if (saved === ALL_SITES || SITES.some((s) => s.id === saved)) return saved
-    } catch { /* ignore */ }
-    return ALL_SITES
-  })
-
-  useEffect(() => {
-    try { localStorage.setItem(KEY, siteId) } catch { /* ignore */ }
-  }, [siteId])
+  // Public endpoint, so the login screen can show the site name too.
+  const query = useApi((signal) => masterApi.site(signal), [])
 
   const value = useMemo(() => {
-    const isAll = siteId === ALL_SITES
-    const site = isAll ? null : SITES.find((s) => s.id === siteId) ?? null
+    const site = query.data ?? FALLBACK
     return {
-      siteId,
-      setSiteId,
-      sites: SITES,
-      isAll,
       site,
-      /** Chip label for the current selection (translatable key when consolidated). */
-      label: isAll ? 'All Sites' : site?.name ?? '',
-      /** Narrow any transaction list to the current selection. */
-      filterSite: (txns) => (isAll ? txns : txns.filter((t) => t.siteId === siteId)),
+      label: site.name,
+      short: site.short || site.name,
+      area: site.area,
+      environment: site.environment,
+      loading: query.loading,
     }
-  }, [siteId])
+  }, [query.data, query.loading])
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
 }
@@ -44,13 +38,4 @@ export function useSite() {
   const ctx = useContext(SiteContext)
   if (!ctx) throw new Error('useSite must be used within SiteProvider')
   return ctx
-}
-
-/** Transactions for the currently selected site (all sites when consolidated). */
-export function useSiteTransactions() {
-  const { siteId, isAll } = useSite()
-  return useMemo(
-    () => (isAll ? TRANSACTIONS : TRANSACTIONS.filter((t) => t.siteId === siteId)),
-    [siteId, isAll]
-  )
 }

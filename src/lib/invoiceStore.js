@@ -2,13 +2,16 @@
    Tax documents.
 
    The pay stations issue an ABBREVIATED tax invoice (ใบกำกับภาษีอย่างย่อ, the
-   "ABB") on every paid exit — that number already lives on the transaction.
-   On request, one or more ABBs are converted into a FULL tax invoice
-   (ใบกำกับภาษีแบบเต็มรูป) carrying the customer's tax id, which is then
-   submitted to the Revenue Department's e-Tax service and delivered to the
-   customer by e-mail.
+   "ABB") on every paid exit — that number already lives on the transaction
+   (PkInoutTran's invoice id, read through the API). On request, one or more
+   ABBs are converted into a FULL tax invoice (ใบกำกับภาษีแบบเต็มรูป) carrying
+   the customer's tax id, which is then submitted to the Revenue Department's
+   e-Tax service and delivered to the customer by e-mail.
 
-   `submitEtax()` / `issueFullInvoice()` are the seams for the real backend.
+   The ABBs are real API data. The full invoices are NOT: the parking database
+   has no table for them and the API has no e-Tax endpoint, so they are kept
+   per browser in localStorage. `issueFullInvoice()` / `submitEtax()` are the
+   seams to point at that service once it exists.
    ========================================================================= */
 
 const KEY = 'singha-parking-invoices'
@@ -20,8 +23,6 @@ export const SELLER = {
   branch: 'สำนักงานใหญ่ (00000)',
   address: '123 ถนนอโศกมนตรี แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพฯ 10110',
 }
-
-export const VAT_RATE = 0.07
 
 /** e-Tax lifecycle: draft → submitted → delivered (or failed). */
 export const ETAX_STATUS = {
@@ -92,15 +93,16 @@ export function issueFullInvoice(txns, customer, user) {
   const clash = txns.find((t) => already.has(t.abbNo))
   if (clash) return { ok: false, error: `${clash.abbNo} is already on a full tax invoice.` }
 
+  // The API already carries the VAT amount per transaction; summing it keeps
+  // the invoice consistent with the ABB receipts it replaces.
   const gross = txns.reduce((a, t) => a + t.total, 0)
-  const vat = +(gross - gross / (1 + VAT_RATE)).toFixed(2)
+  const vat = +txns.reduce((a, t) => a + (t.vat || 0), 0).toFixed(2)
   const net = +(gross - vat).toFixed(2)
 
   const invoice = {
     invoiceNo: nextInvoiceNo(list),
     issuedAt: new Date().toISOString(),
     issuedBy: user?.name || user?.username || 'system',
-    siteId: txns[0].siteId,
     customer: {
       name: customer.name.trim(),
       taxId: (customer.taxId || '').replace(/\D/g, ''),
@@ -220,7 +222,7 @@ export function printInvoice(invoice) {
     <tbody>${lines}</tbody>
     <tfoot>
       <tr><td colspan="5" class="r">มูลค่าก่อนภาษี / Net</td><td class="r">${money(invoice.net)}</td></tr>
-      <tr><td colspan="5" class="r">ภาษีมูลค่าเพิ่ม 7% / VAT</td><td class="r">${money(invoice.vat)}</td></tr>
+      <tr><td colspan="5" class="r">ภาษีมูลค่าเพิ่ม / VAT</td><td class="r">${money(invoice.vat)}</td></tr>
       <tr><td colspan="5" class="r">รวมทั้งสิ้น / Total</td><td class="r">${money(invoice.gross)}</td></tr>
     </tfoot>
   </table>

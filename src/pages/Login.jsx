@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useLang } from '../lib/i18n.jsx'
+import { useSite } from '../lib/siteContext.jsx'
 import { IconCar } from '../components/icons.jsx'
 import { LangFlag } from '../components/flags.jsx'
 import './login.css'
@@ -9,9 +10,10 @@ import './login.css'
 export default function Login() {
   const { login } = useAuth()
   const { t, lang, toggle: toggleLang } = useLang()
+  const { site } = useSite()
   const navigate = useNavigate()
-  const [username, setUsername] = useState('admin')
-  const [password, setPassword] = useState('parking123')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -43,7 +45,7 @@ export default function Login() {
             <li>{t('Per-tenant reports with CSV / Excel export')}</li>
           </ul>
         </div>
-        <div className="hero-foot">© {new Date().getFullYear()} Singha Parking Systems</div>
+        <div className="hero-foot">{site.name} · © {new Date().getFullYear()} Singha Parking Systems</div>
         <div className="hero-glow" />
       </aside>
 
@@ -63,7 +65,7 @@ export default function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
-              placeholder="admin"
+              placeholder={t('Username')}
             />
           </div>
 
@@ -82,12 +84,12 @@ export default function Login() {
 
           {error && <div className="login-error">{t(error)}</div>}
 
-          <button className="btn primary login-submit" disabled={loading}>
+          <button className="btn primary login-submit" disabled={loading || !username.trim() || !password}>
             {loading ? t('Signing in…') : t('Sign in')}
           </button>
 
           <div className="login-hint">
-            {t('Demo credentials —')} <code>admin</code> / <code>parking123</code>
+            {t('Sign in with your parking system account.')}
           </div>
         </form>
       </div>

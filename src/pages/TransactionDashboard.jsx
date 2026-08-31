@@ -1,20 +1,19 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts'
 import { resolveRange, DEFAULT_RANGE, rangeLabel } from '../lib/dateRange.js'
-import {
-  filterByRange, transactionStats, hourlyTraffic, dailyTraffic, cardTypes, recentTransactions,
-} from '../lib/selectors.js'
+import { dashboardApi, transactionsApi, rangeParams } from '../lib/api.js'
+import { useApi } from '../lib/useApi.js'
 import { fmtNum, fmtHour, fmtTime, fmtDate, fmtDateTime, fmtDuration } from '../lib/format.js'
 import RangePicker from '../components/RangePicker.jsx'
 import StatCard from '../components/StatCard.jsx'
 import ChartTooltip from '../components/ChartTooltip.jsx'
 import { Panel, Donut, DonutLegend, DataTable, ProgressRow } from '../components/ui.jsx'
+import { AsyncState, ErrorState, Loading } from '../components/AsyncState.jsx'
 import { IconArrowIn, IconArrowOut, IconUsers, IconClock, IconSearch } from '../components/icons.jsx'
 import { useLang } from '../lib/i18n.jsx'
-import { useSite, useSiteTransactions } from '../lib/siteContext.jsx'
-import SiteBreakdown from '../components/SiteBreakdown.jsx'
+import { useSite } from '../lib/siteContext.jsx'
 import './dashboard.css'
 
 const C_IN = 'var(--good)'
@@ -22,47 +21,63 @@ const C_OUT = 'var(--danger)'
 const C_MEMBER = 'var(--series-4)'
 const C_VISITOR = 'var(--series-1)'
 
+const EMPTY_STATS = { entries: 0, exits: 0, inside: 0, peakHour: '00:00', exitedPct: 0, members: 0, visitors: 0 }
+
 export default function TransactionDashboard() {
   const { t } = useLang()
   const { label: siteLabel } = useSite()
-  const siteTxns = useSiteTransactions()
   const [range, setRange] = useState(DEFAULT_RANGE)
   const bounds = useMemo(() => resolveRange(range), [range])
-  const txns = useMemo(() => filterByRange(siteTxns, bounds), [siteTxns, bounds])
+  const params = useMemo(() => rangeParams(bounds), [bounds])
+
+  const query = useApi((signal) => dashboardApi.transactions(params, signal), [JSON.stringify(params)])
+  const data = query.data
 
   // Traffic can be read by hour of day or day by day — long ranges default to
   // the daily view, where a 24-hour profile says very little.
   const [grain, setGrain] = useState('hour')
-  const s = useMemo(() => transactionStats(txns), [txns])
-  const hourly = useMemo(() => hourlyTraffic(txns), [txns])
-  const daily = useMemo(() => dailyTraffic(txns), [txns])
   const byDay = grain === 'day'
-  const trafficData = byDay ? daily : hourly
-  const cards = useMemo(() => cardTypes(txns), [txns])
-  const recent = useMemo(() => recentTransactions(txns, 8), [txns])
 
-  // Plate lookup — find a member or visitor by (part of) their license plate.
+  const s = data?.stats ?? EMPTY_STATS
+  const cards = data?.cardTypes ?? { member: 0, visitor: 0 }
+  const trafficData = (byDay ? data?.dailyTraffic : data?.hourlyTraffic) ?? []
+
+  /* --- plate lookup ------------------------------------------------------
+     A search hits the API rather than a client-side list, so it reaches every
+     matching record in the window instead of only what a page happens to hold. */
   const [plateQuery, setPlateQuery] = useState('')
   const [plateType, setPlateType] = useState('all')
-  const plateHits = useMemo(() => {
-    const q = plateQuery.trim().toLowerCase()
-    if (!q) return []
-    return txns
-      .filter((tx) => (plateType === 'all' ? true : tx.type === plateType))
-      .filter((tx) => tx.plate.toLowerCase().includes(q) || tx.cardNo.includes(q))
-      .sort((a, b) => (a.entryTime < b.entryTime ? 1 : -1))
-      .slice(0, 100)
-  }, [txns, plateQuery, plateType])
+  const [term, setTerm] = useState('')
+
+  // Debounced, so typing does not fire a request per keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setTerm(plateQuery.trim()), 350)
+    return () => clearTimeout(id)
+  }, [plateQuery])
+
+  const searchParams = useMemo(
+    () => rangeParams(bounds, { search: term, type: plateType, pageSize: 100, sortBy: 'entryTime', desc: true }),
+    [bounds, term, plateType]
+  )
+  const search = useApi(
+    (signal) => transactionsApi.list(searchParams, signal),
+    [JSON.stringify(searchParams)],
+    { enabled: term.length > 0 }
+  )
+  const plateHits = search.data?.items ?? []
 
   return (
     <>
       <div className="page-toolbar">
         <div>
           <div className="hint-label">{t('Vehicle Entry / Exit Overview')}</div>
-          <div className="chips"><span className="chip">{t(siteLabel)}</span><span className="chip">{t(rangeLabel(range))}</span></div>
+          <div className="chips"><span className="chip">{siteLabel}</span><span className="chip">{t(rangeLabel(range))}</span></div>
         </div>
         <RangePicker value={range} onChange={setRange} />
       </div>
+
+      {query.error && <ErrorState error={query.error} onRetry={query.reload} />}
+      {query.loading && !data && <Loading />}
 
       <div className="stat-grid">
         <StatCard icon={IconArrowIn} tone="green" label="Total Entries" value={fmtNum(s.entries)} sub="Vehicles in" />
@@ -70,14 +85,6 @@ export default function TransactionDashboard() {
         <StatCard icon={IconUsers} tone="amber" label="Currently Inside" value={fmtNum(s.inside)} sub="Not yet exited" />
         <StatCard icon={IconClock} tone="violet" label="Peak Hour" value={s.peakHour} sub="Busiest entry hour" />
       </div>
-
-      <SiteBreakdown
-        txns={txns}
-        metrics={['entries', 'exits', 'inside', 'members', 'visitors', 'peakHour']}
-        shareBy="entries"
-        chartMetric="entries"
-        sub="Entry volume of every site in the total"
-      />
 
       <Panel title="Status Breakdown" sub="Exit completion of entries">
         <div className="prog-list">
@@ -100,28 +107,32 @@ export default function TransactionDashboard() {
             </div>
           }
         >
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={trafficData} margin={{ top: 6, right: 8, left: -8, bottom: 0 }} barGap={2}>
-              <CartesianGrid stroke="var(--border)" vertical={false} />
-              {byDay ? (
-                <XAxis dataKey="day" tickFormatter={(d) => fmtDate(d)} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} minTickGap={24} />
-              ) : (
-                <XAxis dataKey="hour" tickFormatter={fmtHour} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} interval={1} />
-              )}
-              <YAxis tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => fmtNum(v)} />
-              <Tooltip
-                cursor={{ fill: 'var(--surface-inset)' }}
-                content={
-                  <ChartTooltip
-                    labelFormatter={byDay ? (d) => fmtDate(d, { day: '2-digit', month: 'short', year: 'numeric' }) : fmtHour}
-                    valueFormatter={(v) => `${fmtNum(v)} cars`}
+          <AsyncState query={query} height={320}>
+            {() => (
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={trafficData} margin={{ top: 6, right: 8, left: -8, bottom: 0 }} barGap={2}>
+                  <CartesianGrid stroke="var(--border)" vertical={false} />
+                  {byDay ? (
+                    <XAxis dataKey="day" tickFormatter={(d) => fmtDate(`${d}T00:00:00`)} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} minTickGap={24} />
+                  ) : (
+                    <XAxis dataKey="hour" tickFormatter={fmtHour} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} interval={1} />
+                  )}
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => fmtNum(v)} />
+                  <Tooltip
+                    cursor={{ fill: 'var(--surface-inset)' }}
+                    content={
+                      <ChartTooltip
+                        labelFormatter={byDay ? (d) => fmtDate(`${d}T00:00:00`, { day: '2-digit', month: 'short', year: 'numeric' }) : fmtHour}
+                        valueFormatter={(v) => `${fmtNum(v)} cars`}
+                      />
+                    }
                   />
-                }
-              />
-              <Bar dataKey="entries" name="Entries" fill={C_IN} radius={[4, 4, 0, 0]} maxBarSize={byDay ? 22 : 14} />
-              <Bar dataKey="exits" name="Exits" fill={C_OUT} radius={[4, 4, 0, 0]} maxBarSize={byDay ? 22 : 14} />
-            </BarChart>
-          </ResponsiveContainer>
+                  <Bar dataKey="entries" name="Entries" fill={C_IN} radius={[4, 4, 0, 0]} maxBarSize={byDay ? 22 : 14} />
+                  <Bar dataKey="exits" name="Exits" fill={C_OUT} radius={[4, 4, 0, 0]} maxBarSize={byDay ? 22 : 14} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </AsyncState>
         </Panel>
 
         <Panel title="Card Types" sub="Member vs visitor entries">
@@ -144,7 +155,7 @@ export default function TransactionDashboard() {
 
       <Panel
         title="Member / Visitor Plate Search"
-        sub="Look up a member or visitor by license plate"
+        sub="Look up a member or visitor by license plate or card number"
         right={
           <div className="panel-filters">
             <label className="search-box">
@@ -164,28 +175,31 @@ export default function TransactionDashboard() {
           </div>
         }
       >
-        {plateQuery.trim() ? (
+        {term ? (
           <>
             <div className="selection-bar">
-              {fmtNum(plateHits.length)} {t('matches')} · {t(rangeLabel(range))}
+              {search.loading ? t('Searching…') : `${fmtNum(search.data?.totalItems ?? 0)} ${t('matches')}`} · {t(rangeLabel(range))}
               <button className="btn tiny" onClick={() => setPlateQuery('')}>{t('Clear')}</button>
             </div>
-            <DataTable
-              maxHeight={360}
-              empty="No vehicle matches that plate in this range."
-              rows={plateHits.map((r) => ({ ...r, _key: r.id }))}
-              columns={[
-                { key: 'plate', label: 'License Plate', render: (r) => <strong>{r.plate}</strong> },
-                { key: 'province', label: 'Province' },
-                { key: 'type', label: 'Type', render: (r) => <span className={`pill ${r.type}`}>{t(r.type)}</span> },
-                { key: 'cardNo', label: 'Card No.' },
-                { key: 'entryTime', label: 'Entry', render: (r) => fmtDateTime(r.entryTime) },
-                { key: 'exitTime', label: 'Exit', render: (r) => (r.exitTime ? fmtDateTime(r.exitTime) : '—') },
-                { key: 'durationMin', label: 'Duration', align: 'right', render: (r) => fmtDuration(r.durationMin) },
-                { key: 'overnight', label: 'Overnight', render: (r) => (r.overnight ? <span className="pill warn">{t('Overnight')}</span> : '—') },
-                { key: 'status', label: 'Status', render: (r) => <span className={`pill ${r.status === 'exited' ? 'ok' : 'inside'}`}>{t(r.status === 'exited' ? 'Exited' : 'Inside')}</span> },
-              ]}
-            />
+            <AsyncState query={search} height={200} empty="No vehicle matches that plate in this range.">
+              {() => (
+                <DataTable
+                  maxHeight={360}
+                  empty="No vehicle matches that plate in this range."
+                  rows={plateHits.map((r) => ({ ...r, _key: r.id }))}
+                  columns={[
+                    { key: 'plate', label: 'License Plate', render: (r) => <strong>{r.plate || '—'}</strong> },
+                    { key: 'type', label: 'Type', render: (r) => <span className={`pill ${r.type}`}>{t(r.type)}</span> },
+                    { key: 'cardNo', label: 'Card No.', render: (r) => r.cardNo || '—' },
+                    { key: 'entryTime', label: 'Entry', render: (r) => fmtDateTime(r.entryTime) },
+                    { key: 'exitTime', label: 'Exit', render: (r) => (r.exitTime ? fmtDateTime(r.exitTime) : '—') },
+                    { key: 'durationMin', label: 'Duration', align: 'right', render: (r) => fmtDuration(r.durationMin) },
+                    { key: 'overnight', label: 'Overnight', render: (r) => (r.overnight ? <span className="pill warn">{t('Overnight')}</span> : '—') },
+                    { key: 'status', label: 'Status', render: (r) => <span className={`pill ${r.status === 'exited' ? 'ok' : 'inside'}`}>{t(r.status === 'exited' ? 'Exited' : 'Inside')}</span> },
+                  ]}
+                />
+              )}
+            </AsyncState>
           </>
         ) : (
           <div className="empty">{t('Type a license plate to search members and visitors.')}</div>
@@ -193,18 +207,23 @@ export default function TransactionDashboard() {
       </Panel>
 
       <Panel title="Recent Transactions" sub="Latest vehicle movements">
-        <DataTable
-          columns={[
-            { key: 'entryTime', label: 'Entry', render: (r) => fmtTime(r.entryTime) },
-            { key: 'exitTime', label: 'Exit', render: (r) => (r.exitTime ? fmtTime(r.exitTime) : '—') },
-            { key: 'plate', label: 'License Plate', render: (r) => <strong>{r.plate}</strong> },
-            { key: 'cardNo', label: 'Card No.' },
-            { key: 'type', label: 'Type', render: (r) => <span className={`pill ${r.type}`}>{t(r.type)}</span> },
-            { key: 'durationMin', label: 'Duration', align: 'right', render: (r) => fmtDuration(r.durationMin) },
-            { key: 'status', label: 'Status', render: (r) => <span className={`pill ${r.status === 'exited' ? 'ok' : 'inside'}`}>{t(r.status === 'exited' ? 'Exited' : 'Inside')}</span> },
-          ]}
-          rows={recent}
-        />
+        <AsyncState query={query} height={240} empty="No transactions in this range.">
+          {(d) => (
+            <DataTable
+              columns={[
+                { key: 'entryTime', label: 'Entry', render: (r) => fmtTime(r.entryTime) },
+                { key: 'exitTime', label: 'Exit', render: (r) => (r.exitTime ? fmtTime(r.exitTime) : '—') },
+                { key: 'plate', label: 'License Plate', render: (r) => <strong>{r.plate || '—'}</strong> },
+                { key: 'cardNo', label: 'Card No.', render: (r) => r.cardNo || '—' },
+                { key: 'type', label: 'Type', render: (r) => <span className={`pill ${r.type}`}>{t(r.type)}</span> },
+                { key: 'durationMin', label: 'Duration', align: 'right', render: (r) => fmtDuration(r.durationMin) },
+                { key: 'status', label: 'Status', render: (r) => <span className={`pill ${r.status === 'exited' ? 'ok' : 'inside'}`}>{t(r.status === 'exited' ? 'Exited' : 'Inside')}</span> },
+              ]}
+              rows={(d.recent ?? []).map((r) => ({ ...r, _key: r.id }))}
+              empty="No transactions in this range."
+            />
+          )}
+        </AsyncState>
       </Panel>
     </>
   )

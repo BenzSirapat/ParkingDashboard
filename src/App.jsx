@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext.jsx'
 import Layout from './components/Layout.jsx'
 import Login from './pages/Login.jsx'
+import SplashScreen from './components/SplashScreen.jsx'
 
 import SalesDashboard from './pages/SalesDashboard.jsx'
 import TransactionDashboard from './pages/TransactionDashboard.jsx'
@@ -31,7 +32,12 @@ function RequireAuth({ children }) {
 }
 
 export default function App() {
-  const { user } = useAuth()
+  const { user, restoring } = useAuth()
+
+  // A stored token is checked against /api/auth/me on load; until that answers
+  // we know neither that the user is signed in nor that they are not.
+  if (restoring) return <SplashScreen />
+
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />

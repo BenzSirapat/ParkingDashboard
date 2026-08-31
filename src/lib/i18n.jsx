@@ -7,6 +7,32 @@ const LangContext = createContext(null)
 // Anything missing simply falls back to the English key.
 const TH = {
   // chrome
+  // API loading / error states
+  'Loading…': 'กำลังโหลด…',
+  'Could not load data': 'โหลดข้อมูลไม่สำเร็จ',
+  'Unexpected error': 'เกิดข้อผิดพลาดที่ไม่คาดคิด',
+  'Try again': 'ลองใหม่',
+  'Cannot reach the parking API. Check that the service is running.': 'เชื่อมต่อ API ของระบบลานจอดรถไม่ได้ กรุณาตรวจสอบว่าเซอร์วิสทำงานอยู่',
+  'Your session has expired. Please sign in again.': 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+  'Sign-in failed. Please try again.': 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่',
+  'Sign in with your parking system account.': 'เข้าสู่ระบบด้วยบัญชีของระบบลานจอดรถ',
+  'Searching…': 'กำลังค้นหา…',
+  'Preparing…': 'กำลังเตรียมไฟล์…',
+  'Saving…': 'กำลังบันทึก…',
+  'The request failed.': 'ทำรายการไม่สำเร็จ',
+  'No data in this range.': 'ไม่มีข้อมูลในช่วงเวลานี้',
+  'No transactions in this range.': 'ไม่มีรายการในช่วงเวลานี้',
+  'No payments in this range.': 'ไม่มีการชำระเงินในช่วงเวลานี้',
+
+  // user management (PkAdminweb through /api/users)
+  'Whole property': 'ทั้งโครงการ',
+  'Whole property (operator)': 'ทั้งโครงการ (ผู้ดูแล)',
+  'A tenant account only ever sees its own transactions.': 'บัญชีผู้เช่าจะเห็นเฉพาะรายการของตนเองเท่านั้น',
+
+  // barriers
+  'Could not open the barrier': 'เปิดไม้กั้นไม่สำเร็จ',
+  'No barriers are configured for this site.': 'ยังไม่ได้ตั้งค่าไม้กั้นสำหรับสาขานี้',
+
   'Dashboards': 'แดชบอร์ด',
   'Reports': 'รายงาน',
   'Language': 'ภาษา',
@@ -15,29 +41,14 @@ const TH = {
   'Operator': 'เจ้าหน้าที่',
   'Singha Parking · operations overview': 'สิงห์ พาร์กกิ้ง · ภาพรวมการดำเนินงาน',
 
-  // sites (executive filter)
+  // site (one deployment = one site)
   'Site': 'สาขา',
-  'All Sites': 'ทุกสาขา',
-  'All sites consolidated · executive overview': 'รวมทุกสาขา · ภาพรวมสำหรับผู้บริหาร',
   'site overview': 'ภาพรวมสาขา',
-  'Site Comparison': 'เปรียบเทียบรายสาขา',
-  'Every site in the consolidated total': 'ทุกสาขาที่รวมอยู่ในยอดรวม',
-  'Revenue contribution of every site in the total': 'สัดส่วนรายได้ของแต่ละสาขาในยอดรวม',
-  'Entry volume of every site in the total': 'ปริมาณรถเข้าของแต่ละสาขาในยอดรวม',
-  'Stamp validations of every site in the total': 'จำนวนการประทับตราของแต่ละสาขาในยอดรวม',
-  'Vehicle volume of every site in the total': 'ปริมาณรถของแต่ละสาขาในยอดรวม',
-  'Opportunity loss of every site in the total': 'ค่าเสียโอกาสของแต่ละสาขาในยอดรวม',
-  'Daily Trend by Site': 'แนวโน้มรายวันแยกตามสาขา',
-  'Stacked — bar height is the all-sites total': 'กราฟซ้อน — ความสูงของแท่งคือยอดรวมทุกสาขา',
   'of total': 'ของยอดรวม',
-  'Tip: pick a single site in the top bar to drill down.': 'เคล็ดลับ: เลือกสาขาที่แถบด้านบนเพื่อดูรายละเอียดรายสาขา',
   'Revenue': 'รายได้',
   'Avg Ticket': 'ค่าเฉลี่ยต่อบิล',
   'Members': 'สมาชิก',
   'Visitors': 'ผู้มาติดต่อ',
-  'Share of Revenue': 'สัดส่วนรายได้',
-  'Share of Entries': 'สัดส่วนรถเข้า',
-  'Live · demo dataset': 'ออนไลน์ · ข้อมูลตัวอย่าง',
   'All rights reserved.': 'สงวนลิขสิทธิ์',
   'Terms & Conditions · Privacy & Policy': 'ข้อกำหนดและเงื่อนไข · นโยบายความเป็นส่วนตัว',
 
@@ -70,7 +81,6 @@ const TH = {
   'Real-time In / Out summary': 'สรุปการเข้า-ออกแบบเรียลไทม์',
   'Revenue & stamp-discount tracking': 'ติดตามรายได้และส่วนลดจากแสตมป์',
   'Per-tenant reports with CSV / Excel export': 'รายงานรายผู้เช่า ส่งออก CSV / Excel',
-  'Demo credentials —': 'บัญชีทดลอง —',
   'Invalid username or password.': 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
 
   // range presets

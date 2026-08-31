@@ -1,27 +1,20 @@
 /* =========================================================================
    Barriers / gates and the emergency-open audit trail.
 
-   `openBarrier()` is the seam for the real controller — point it at the C#
-   gate service (POST /api/gates/{id}/emergency-open) and the page above it
-   keeps working. Every attempt is written to an audit log, because an
-   emergency open has to be traceable to the person who ordered it.
+   The barrier list and the open command are real: `GET /api/door` reads
+   dbo.DoorList and `POST /api/door/{id}/trigger` sends the relay command to
+   the controller over TCP.
+
+   The audit trail is NOT — the parking database has no table for it, so the
+   log below is kept per browser in localStorage. An emergency open has to be
+   traceable to the person who ordered it, so this is the piece to move server
+   side once there is a table to write to.
    ========================================================================= */
 
-import { SITES } from '../data/mockData.js'
+import { doorsApi } from './api.js'
 
 const LOG_KEY = 'singha-parking-gate-log'
 const MAX_LOG = 200
-
-/** Gates per site, derived so a new site automatically gets its lanes. */
-export const GATES = SITES.flatMap((site, i) => [
-  { id: `${site.id}-in1`, siteId: site.id, name: 'Entry Lane 1', direction: 'entry', device: `GATE-${i + 1}01` },
-  { id: `${site.id}-in2`, siteId: site.id, name: 'Entry Lane 2', direction: 'entry', device: `GATE-${i + 1}02` },
-  { id: `${site.id}-out1`, siteId: site.id, name: 'Exit Lane 1', direction: 'exit', device: `GATE-${i + 1}03` },
-  { id: `${site.id}-out2`, siteId: site.id, name: 'Exit Lane 2', direction: 'exit', device: `GATE-${i + 1}04` },
-])
-
-export const gatesForSite = (siteId) =>
-  (siteId === 'all' ? GATES : GATES.filter((g) => g.siteId === siteId))
 
 /** Reasons an operator can give — free text is always allowed on top. */
 export const EMERGENCY_REASONS = [
@@ -34,6 +27,20 @@ export const EMERGENCY_REASONS = [
 ]
 
 export const reasonLabel = (v) => EMERGENCY_REASONS.find((r) => r.value === v)?.label ?? v
+
+/** Barriers this deployment can control. */
+export async function fetchGates(signal) {
+  const doors = await doorsApi.list(signal)
+  return (doors ?? []).map((d) => ({
+    id: d.doorId,
+    name: d.doorName || `Door ${d.doorId}`,
+    device: d.ip_address ?? d.ipAddress ?? '—',
+    serverId: d.serverID ?? d.serverId,
+    // DoorList carries no direction column; infer it from the name so the
+    // cards still read as entry / exit lanes where the naming allows.
+    direction: /out|exit|ออก/i.test(d.doorName || '') ? 'exit' : 'entry',
+  }))
+}
 
 export function readLog() {
   try {
@@ -50,34 +57,38 @@ function writeLog(entries) {
 }
 
 /**
- * Send the emergency-open command to a barrier.
+ * Send the emergency-open command to a barrier and record the attempt.
  *
- * @param {object} gate      the gate being opened
- * @param {object} opts      { reason, note, holdSeconds, user }
+ * @param {object} gate  the gate being opened
+ * @param {object} opts  { reason, note, user }
  * @returns audit entry (also appended to the local log)
  */
-export async function openBarrier(gate, { reason, note, holdSeconds = 30, user }) {
+export async function openBarrier(gate, { reason, note, user }) {
   const startedAt = new Date().toISOString()
-  // --- replace with: await fetch(`/api/gates/${gate.id}/emergency-open`, …) ---
-  await new Promise((r) => setTimeout(r, 700))
-  const ok = true
-  // -------------------------------------------------------------------------
+
+  let ok = true
+  let error = null
+  try {
+    await doorsApi.trigger(gate.id)
+  } catch (err) {
+    ok = false
+    error = err?.message || 'The controller did not answer.'
+  }
 
   const entry = {
     id: `g${Date.now().toString(36)}`,
     gateId: gate.id,
     gateName: gate.name,
     device: gate.device,
-    siteId: gate.siteId,
     direction: gate.direction,
     reason,
     reasonLabel: reasonLabel(reason),
     note: note || '',
-    holdSeconds,
     by: user?.name || user?.username || 'unknown',
     byRole: user?.role || '',
     at: startedAt,
     result: ok ? 'opened' : 'failed',
+    error,
   }
   writeLog([entry, ...readLog()])
   return entry

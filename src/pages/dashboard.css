@@ -290,3 +290,76 @@ table.data tbody tr.clickable { cursor: pointer; }
 /* ---- Flush stat grid inside a panel ---- */
 .stat-grid.flush { margin-bottom: 16px; }
 .stat-grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+
+/* ------------------------------------------------- API loading / error states
+   Every panel now waits on a request, so these are shown wherever data used to
+   simply be there. */
+
+.async-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 20px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.async-state.error {
+  color: var(--danger);
+}
+
+.async-state.error strong {
+  font-size: 14px;
+}
+
+.async-state.error span {
+  color: var(--ink-muted);
+  max-width: 46ch;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--border-strong);
+  border-top-color: var(--brand, var(--series-1));
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; }
+}
+
+/* Shown while a stored token is checked against /api/auth/me. */
+.splash {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--bg, var(--surface));
+  color: var(--ink);
+}
+
+.splash-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--surface-inset);
+  color: var(--series-1);
+}
+
+.splash-brand {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}

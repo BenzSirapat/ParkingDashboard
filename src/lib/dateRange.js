@@ -1,6 +1,7 @@
 // Time-range presets shared by every dashboard page.
-// The mock engine keeps a rolling 12 months, so ranges go all the way up to
-// "This year" / "Last 12 months" for year-to-date accumulated views.
+// Ranges go all the way up to "This year" / "Last 12 months" so a dashboard can
+// be read as an accumulated year-to-date view. The resolved bounds are sent to
+// the API as its `from` / `to` filter.
 
 export const RANGE_PRESETS = [
   { key: 'today', label: 'Today', days: 1 },
@@ -64,9 +65,17 @@ export function customBounds(from, to) {
   return { from: startOfDay(new Date(from)), to: endOfDay(new Date(to)) }
 }
 
-export function inRange(iso, bounds) {
-  const t = new Date(iso).getTime()
-  return t >= bounds.from.getTime() && t <= bounds.to.getTime()
+/** yyyy-mm-dd for a date input, in local time. */
+export function isoDate(d = new Date()) {
+  const x = new Date(d)
+  x.setMinutes(x.getMinutes() - x.getTimezoneOffset())
+  return x.toISOString().slice(0, 10)
+}
+
+export function daysAgo(n) {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return isoDate(d)
 }
 
 export function rangeLabel(range) {

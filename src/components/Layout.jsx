@@ -6,17 +6,16 @@ import { useLang } from '../lib/i18n.jsx'
 import { NAV_GROUPS, ALL_NAV } from '../nav.js'
 import { IconLogout, IconSun, IconMoon, IconCar, IconMenu } from './icons.jsx'
 import { LangFlag } from './flags.jsx'
-import SiteSwitcher from './SiteSwitcher.jsx'
 import ClockBar from './ClockBar.jsx'
 import { useSite } from '../lib/siteContext.jsx'
-import { roleLabel } from '../lib/usersStore.js'
+import { roleLabel } from '../lib/roles.js'
 import './layout.css'
 
 export default function Layout() {
   const { user, logout, canAdmin } = useAuth()
   const { theme, toggle } = useTheme()
   const { t, lang, toggle: toggleLang } = useLang()
-  const { isAll, site } = useSite()
+  const { site, environment } = useSite()
   const location = useLocation()
   const [open, setOpen] = useState(false) // mobile drawer
 
@@ -53,7 +52,7 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-foot">
-          <span className="dot" /> {t('Live · demo dataset')}
+          <span className="dot" /> {site.short || site.name}{environment ? ` · ${environment}` : ''}
         </div>
       </aside>
 
@@ -66,14 +65,13 @@ export default function Layout() {
             <div>
               <h1 className="page-title">{t(current?.label ?? 'Dashboard')}</h1>
               <p className="page-sub">
-                {isAll ? t('All sites consolidated · executive overview') : `${site.name} · ${t('site overview')}`}
+                {`${site.name} · ${t('site overview')}`}
               </p>
             </div>
           </div>
 
           <div className="topbar-actions">
             <ClockBar />
-            <SiteSwitcher />
             <button className="icon-btn lang-btn" title={t('Language')} onClick={toggleLang} aria-label={t('Language')}>
               <LangFlag lang={lang} />
               <span className="lang-code">{lang === 'en' ? 'EN' : 'ไทย'}</span>

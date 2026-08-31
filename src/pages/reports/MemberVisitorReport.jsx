@@ -1,73 +1,45 @@
-import { useCallback } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import ReportPage from '../../components/ReportPage.jsx'
 import ChartTooltip from '../../components/ChartTooltip.jsx'
-import { EmptyState } from '../../components/ui.jsx'
-import { TRANSACTIONS, stampInfo, siteShort } from '../../data/mockData.js'
-import { fmtDateTime, fmtNum, fmtHour, fmtBaht } from '../../lib/format.js'
-import { hourOf } from '../../lib/selectors.js'
-import { useLang } from '../../lib/i18n.jsx'
-import { applyFilters, cardTypeOptions, vehicleClassOptions, companyOptions } from './reportHelpers.js'
+import { fmtDate, fmtNum } from '../../lib/format.js'
+import { useMasterData } from '../../lib/masterData.jsx'
+import { vehicleTypeOptions } from './reportHelpers.js'
+
+const C_MEMBER = 'var(--series-4)'
+const C_VISITOR = 'var(--series-1)'
 
 export default function MemberVisitorReport() {
-  const { t: tr } = useLang()
-  const compute = useCallback((values) => {
-    const rows = applyFilters(TRANSACTIONS, values)
-    return rows.slice(0, 500).map((t) => ({
-      _key: t.id,
-      site: siteShort(t.siteId),
-      cardNo: t.cardNo,
-      plate: t.plate,
-      type: t.type,
-      entry: fmtDateTime(t.entryTime),
-      exit: t.exitTime ? fmtDateTime(t.exitTime) : '—',
-      duration: fmtNum(t.durationMin),
-      stampRate: t.stampCode ? fmtBaht(stampInfo(t.stampCode)?.rate || 0) : '—',
-      _hour: hourOf(t.entryTime),
-    }))
-  }, [])
+  const { tenantOptions } = useMasterData()
 
-  const chart = (rows) => {
-    if (!rows.length) return <EmptyState label="No data for chart" />
-    const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }))
-    for (const r of rows) buckets[r._hour].count++
-    return (
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={buckets} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
-          <CartesianGrid stroke="var(--border)" vertical={false} />
-          <XAxis dataKey="hour" tickFormatter={fmtHour} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} interval={1} />
-          <YAxis tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={false} width={40} />
-          <Tooltip cursor={{ fill: 'var(--surface-inset)' }} content={<ChartTooltip labelFormatter={fmtHour} valueFormatter={(v) => `${fmtNum(v)} visits`} />} />
-          <Bar dataKey="count" name="Visits" fill="var(--series-1)" radius={[5, 5, 0, 0]} maxBarSize={22} />
-        </BarChart>
-      </ResponsiveContainer>
-    )
-  }
+  const chart = (rows) => (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={rows} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
+        <CartesianGrid stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="day" tickFormatter={(d) => fmtDate(`${d}T00:00:00`)} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} minTickGap={24} />
+        <YAxis tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={false} width={40} />
+        <Tooltip
+          cursor={{ fill: 'var(--surface-inset)' }}
+          content={<ChartTooltip labelFormatter={(d) => fmtDate(`${d}T00:00:00`, { day: '2-digit', month: 'short', year: 'numeric' })} valueFormatter={(v) => `${fmtNum(v)} visits`} />}
+        />
+        <Bar dataKey="members" name="Members" stackId="v" fill={C_MEMBER} maxBarSize={22} />
+        <Bar dataKey="visitors" name="Visitors" stackId="v" fill={C_VISITOR} radius={[4, 4, 0, 0]} maxBarSize={22} />
+      </BarChart>
+    </ResponsiveContainer>
+  )
 
   return (
     <ReportPage
-      compute={compute}
+      reportKey="member-visitor"
       title="Dashboard Member Visitor"
-      subtitle="Member &amp; visitor entry log"
+      subtitle="Member &amp; visitor split, day by day"
       exportName="member-visitor-report"
       chart={chart}
-      chartTitle="Hourly statistics"
+      chartTitle="Daily member / visitor split"
       filters={[
         { id: 'range', label: 'Date range', type: 'daterange', colSpan: 2 },
-        { id: 'plate', label: 'Search license plate', type: 'text', placeholder: 'e.g. 1กข 1234', colSpan: 2 },
-        { id: 'cardType', label: 'Type', type: 'select', options: cardTypeOptions },
-        { id: 'vehicleClass', label: 'Vehicle type', type: 'select', options: vehicleClassOptions },
-        { id: 'company', label: 'Tenant', type: 'select', options: companyOptions },
-        { id: 'cardNo', label: 'Search card no.', type: 'text', placeholder: 'Card no.' },
-      ]}
-      columns={[
-        { key: 'cardNo', label: 'Member / Card No.', render: (r) => <strong>{r.cardNo}</strong> },
-        { key: 'plate', label: 'License Plate', render: (r) => <strong>{r.plate}</strong> },
-        { key: 'type', label: 'Type', render: (r) => <span className={`pill ${r.type}`}>{tr(r.type)}</span> },
-        { key: 'entry', label: 'Entry' },
-        { key: 'exit', label: 'Exit' },
-        { key: 'duration', label: 'Duration (min)', align: 'right' },
-        { key: 'stampRate', label: 'Stamp Rate', align: 'right' },
+        { id: 'search', label: 'Search license plate', type: 'text', placeholder: 'e.g. 1กข 1234', colSpan: 2 },
+        { id: 'vehicleType', label: 'Vehicle type', type: 'select', options: vehicleTypeOptions },
+        { id: 'tenantId', label: 'Tenant', type: 'select', options: tenantOptions },
       ]}
     />
   )

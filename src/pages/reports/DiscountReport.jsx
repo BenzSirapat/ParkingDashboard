@@ -1,44 +1,27 @@
-import { useCallback } from 'react'
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts'
 import ReportPage from '../../components/ReportPage.jsx'
 import ChartTooltip from '../../components/ChartTooltip.jsx'
-import { EmptyState } from '../../components/ui.jsx'
-import { TRANSACTIONS, companyName, siteShort } from '../../data/mockData.js'
-import { fmtDateTime, fmtNum, fmtHour, fmtBaht, fmtDuration } from '../../lib/format.js'
-import { hourOf } from '../../lib/selectors.js'
-import { applyFilters, companyOptions, stampOptions, cardTypeOptions } from './reportHelpers.js'
+import { fmtBaht } from '../../lib/format.js'
+import { useMasterData } from '../../lib/masterData.jsx'
+import { cardTypeOptions } from './reportHelpers.js'
+
+const SERIES = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)', 'var(--series-6)', 'var(--series-7)']
 
 export default function DiscountReport() {
-  const compute = useCallback((values) => {
-    const rows = applyFilters(TRANSACTIONS.filter((t) => t.stampCode), values)
-    return rows.slice(0, 500).map((t) => ({
-      _key: t.id,
-      site: siteShort(t.siteId),
-      code: t.companyId.toUpperCase(),
-      company: companyName(t.companyId),
-      plate: t.plate,
-      entry: fmtDateTime(t.entryTime),
-      exit: t.exitTime ? fmtDateTime(t.exitTime) : '—',
-      duration: fmtDuration(t.durationMin),
-      stampCode: t.stampCode,
-      companyPaid: fmtBaht(t.stampDiscount),
-      contactPaid: fmtBaht(t.parkingFee),
-      _hour: hourOf(t.entryTime),
-    }))
-  }, [])
+  const { tenantOptions, stampOptions } = useMasterData()
 
   const chart = (rows) => {
-    if (!rows.length) return <EmptyState label="No data for chart" />
-    const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }))
-    for (const r of rows) buckets[r._hour].count++
+    const top = rows.slice(0, 10)
     return (
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={buckets} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={top} margin={{ top: 6, right: 8, left: 0, bottom: 46 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
-          <XAxis dataKey="hour" tickFormatter={fmtHour} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} interval={1} />
-          <YAxis tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={false} width={40} />
-          <Tooltip cursor={{ fill: 'var(--surface-inset)' }} content={<ChartTooltip labelFormatter={fmtHour} valueFormatter={(v) => `${fmtNum(v)} stamps`} />} />
-          <Bar dataKey="count" name="Stamps" fill="var(--series-2)" radius={[5, 5, 0, 0]} maxBarSize={22} />
+          <XAxis dataKey="code" tick={{ fontSize: 10.5, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} angle={-30} textAnchor="end" interval={0} height={64} />
+          <YAxis tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={false} width={52} />
+          <Tooltip cursor={{ fill: 'var(--surface-inset)' }} content={<ChartTooltip valueFormatter={(v) => fmtBaht(v)} />} />
+          <Bar dataKey="discount" name="Discount given" radius={[5, 5, 0, 0]} maxBarSize={40}>
+            {top.map((_, i) => <Cell key={i} fill={SERIES[i % SERIES.length]} />)}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     )
@@ -46,27 +29,17 @@ export default function DiscountReport() {
 
   return (
     <ReportPage
-      compute={compute}
+      reportKey="discount"
       title="Discount Report"
-      subtitle="Discount stamp validations"
+      subtitle="Stamp discount by tenant and stamp code"
       exportName="discount-report"
       chart={chart}
-      chartTitle="Hourly stamp usage"
+      chartTitle="Discount given by stamp code"
       filters={[
-        { id: 'company', label: 'Tenant', type: 'select', options: companyOptions },
-        { id: 'stamp', label: 'Stamp code', type: 'select', options: stampOptions },
-        { id: 'cardType', label: 'Transaction type', type: 'select', options: cardTypeOptions },
+        { id: 'tenantId', label: 'Tenant', type: 'select', options: tenantOptions },
+        { id: 'stampCode', label: 'Stamp code', type: 'select', options: stampOptions },
+        { id: 'type', label: 'Transaction type', type: 'select', options: cardTypeOptions },
         { id: 'range', label: 'Date range', type: 'daterange', colSpan: 2 },
-      ]}
-      columns={[
-        { key: 'company', label: 'Company', render: (r) => <strong>{r.company}</strong> },
-        { key: 'plate', label: 'License Plate' },
-        { key: 'entry', label: 'Entry' },
-        { key: 'exit', label: 'Exit' },
-        { key: 'duration', label: 'Duration' },
-        { key: 'stampCode', label: 'Stamp Code' },
-        { key: 'companyPaid', label: 'Company Paid', align: 'right' },
-        { key: 'contactPaid', label: 'Contact Paid', align: 'right' },
       ]}
     />
   )

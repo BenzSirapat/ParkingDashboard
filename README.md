@@ -1,89 +1,73 @@
-# Singha Parking — Web Dashboard
+# ParkingDashboard
 
-A friendly, modern parking-operations dashboard built with **Vite + React**.
-It runs entirely on **mock data** today; the data layer (`src/data/mockData.js`)
-is isolated so it can be swapped for the **C# backend** API later without touching
-the UI. Layout & menu structure mirror the reference *BTS Visionary Park* carpark
-system, with a cleaner, more approachable design.
+Vite + React dashboard for the Singha parking system. Every page reads
+**ParkingDashboardAPI** — there is no mock data in this project.
 
 ## Getting started
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173  (opens automatically)
+npm run dev          # http://localhost:5173
 ```
 
-Sign in with the demo account: **`admin` / `parking123`**
-(the whole app sits behind this login gate).
+The API must be running and must list this origin in `Cors:AllowedOrigins`.
 
-Production build:
+## Configuration — `.env`
 
-```bash
-npm run build && npm run preview
-```
+| Variable | Purpose |
+|---|---|
+| `VITE_API_BASE` | The ParkingDashboardAPI for this site, e.g. `http://localhost:5075/api` |
+| `VITE_BASE` | Path the app is served from (`/`, `/dashboard/`, `./`) |
 
-## Multi-site (executive view)
+**One API deployment serves one site and one database**, so the dashboard has no
+site switcher: it shows whatever `VITE_API_BASE` points at, and reads the site's
+name from `GET /api/master/site`. To look at another site, build against that
+site's API.
 
-The group runs four parking sites — **Singha Complex (Asoke)**, **S Oasis (Vibhavadi)**,
-**Sun Towers (Chatuchak)** and **S-Metro (Sukhumvit)**. A **site switcher in the top bar**
-drives the entire app:
+## How it talks to the API
 
-* **A single site** → every dashboard, report and export shows that site only.
-* **All Sites** → everything is consolidated into one group-level roll-up, and each
-  dashboard adds a **Site Comparison** panel: share-of-total bar per site, a metric table
-  with a grand-total row (click a row to drill into that site), and a stacked daily chart
-  whose bar height is the all-sites total.
+* `src/lib/api.js` — the only place that calls `fetch`. It attaches the bearer
+  token, unwraps the server's `{ success, message, data }` envelope, and turns a
+  401 into a sign-out.
+* `src/lib/useApi.js` — `useApi(fetcher, deps)` → `{ data, loading, error, reload }`.
+  The fetcher gets an `AbortSignal`, so changing the range cancels the request
+  that is no longer wanted instead of letting a slow answer overwrite a newer one.
+* `src/components/AsyncPanel.jsx` — the loading / error / empty states.
 
-Reports carry the same selection as their first filter, so you can also switch site from
-inside a report; row-level reports gain a **Site** column while consolidated, and it flows
-through to the CSV / Excel / PDF exports. The choice persists across reloads.
+Aggregation happens on the server. The five dashboards read `/api/dashboard/*`
+and the ten reports read `/api/reports/{key}`, which returns columns, rows and
+footer totals, so `ReportPage` renders any of them and CSV / Excel downloads
+come from `/api/reports/{key}/export` rather than being rebuilt in the browser.
+"Export PDF" is still the browser's own print dialog.
 
-Site definitions live in `SITES` (`src/data/mockData.js`) and the selection in
-`src/lib/siteContext.jsx` — point `filterSite` / `useSiteTransactions` at a `siteId`
-query parameter when the C# backend lands.
+## Sessions and roles
 
-## Menu — everything is wired up and usable
+Signing in calls `/api/auth/login` and stores the JWT. On reload the token is
+checked against `/api/auth/me` rather than trusting a cached user, so a revoked
+account cannot keep a stale dashboard open.
 
-**Dashboards**
-| Page | Contents |
-|------|----------|
-| Sales Dashboard | Revenue / transactions / VAT / avg ticket, parking·lost-card·overnight fees, hourly-revenue bar chart, payment-methods donut, recent transactions |
-| Transaction Dashboard | Entries / exits / inside / peak hour, status breakdown, hourly-traffic (entries vs exits), member-vs-visitor donut, recent movements |
-| Stamp Dashboard | Stamps / companies / fees / avg duration, tenant vs visitor paid, hourly-usage, top-companies, stamp-code table, recent stamps |
-| Vehicle Dashboard | Vehicles in/out, peak accumulated, net flow, regular/temporary split, in-out by time period, vehicle-types donut, accumulated-occupancy trend, per-hour stats |
-| Opportunity Loss Dashboard | Total loss / vehicles / avg loss, tenant·visitor·total revenue, revenue-vs-loss by company, loss distribution by stamp code, top-loss companies, recent losses |
+The role (`admin` / `manager` / `operator` / `viewer`) comes from the API, which
+derives it from `PkAdminweb.admin_level_id` through its `Roles` configuration
+section. That mapping is a convention rather than something the database states —
+**verify it against the site's accounts**, or everyone lands on the default role.
+`src/lib/roles.js` holds only the labels and the permission predicates.
 
-**Reports** (filter → search → **Export CSV / Excel / PDF**)
-Detailed Sales Tax Report · Vehicle Transaction Report · Stamp Report ·
-License Plate Reading Issue · Opportunity Loss Summary · Vehicle Volume Time Period ·
-Dashboard Member Visitor · Discount Report · Package Member Report · Cash or Online Payment
+Tenant-scoped accounts are narrowed by the API itself, not by this app: a tenant
+sees only the transactions its own stamps touched, and only its own tenant and
+stamp lists.
 
-Extras: **Thai / English language switcher** (globe button in the top bar & on the
-login screen; choice persists), **light / dark theme** toggle, responsive layout
-with a mobile drawer, time-range presets (today / 7 / 30 / 90 days), and per-report
-date/tenant/stamp/status filters that actually recompute the table & charts.
+## Still held in the browser
 
-Localization lives in `src/lib/i18n.jsx` (English keys → Thai dictionary); the
-shared components translate centrally, so adding a language is a matter of adding
-one more dictionary.
+Two features have no table in the parking database and no endpoint yet, so they
+live in `localStorage` on the client:
 
-## Project structure
+* **Emergency-barrier audit log** (`src/lib/gateStore.js`) — the barrier list and
+  the open command are real (`/api/door`); the record of who opened what is not,
+  and is per browser. An emergency open should be traceable centrally, so this is
+  the piece to move server-side first.
+* **Full tax invoices and e-Tax delivery** (`src/lib/invoiceStore.js`) — the ABB
+  receipts they are built from are real API data (the invoice number on each paid
+  exit); issuing the full ใบกำกับภาษีเต็มรูป and "delivering" it is local, and the
+  e-Tax submission is simulated.
 
-```
-src/
-  auth/          demo login (AuthContext) — swap for real auth
-  components/    Layout, StatCard, RangePicker, Donut/DataTable/Panel (ui.jsx),
-                 ReportPage scaffold, SiteSwitcher, SiteBreakdown, ChartTooltip, icons
-  data/          mockData.js  ← seeded dataset for every site; replace with backend API
-  lib/           format, dateRange, selectors (aggregations incl. per-site),
-                 siteContext (site filter / roll-up), export (csv/xlsx/pdf)
-  nav.js         sidebar menu definition (Dashboards + Reports groups)
-  pages/         5 dashboards + pages/reports/ (10 reports)
-  styles/        design-system tokens (light + dark)
-```
-
-## Connecting the C# backend later
-
-Replace `src/data/mockData.js` (and, if you prefer server-side aggregation, the
-helpers in `src/lib/selectors.js`) with `fetch` calls to your API. Pages consume
-plain arrays/objects, so no component changes are required.
+Both modules are written as the seam for the real service.

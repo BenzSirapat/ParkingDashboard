@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Parking system dashboard (Vite + React, mock data)",
+  "description": "Parking system dashboard (Vite + React) over ParkingDashboardAPI",
   "homepage": "/",
   "scripts": {
     "dev": "vite",
