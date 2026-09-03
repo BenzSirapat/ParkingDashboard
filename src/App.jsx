@@ -20,6 +20,7 @@ import LicensePlateReport from './pages/reports/LicensePlateReport.jsx'
 import OpportunityLossReport from './pages/reports/OpportunityLossReport.jsx'
 import VehicleVolumeReport from './pages/reports/VehicleVolumeReport.jsx'
 import MemberVisitorReport from './pages/reports/MemberVisitorReport.jsx'
+import EmergencyBarrierReport from './pages/reports/EmergencyBarrierReport.jsx'
 import DiscountReport from './pages/reports/DiscountReport.jsx'
 import PackageMemberReport from './pages/reports/PackageMemberReport.jsx'
 import CashOnlineReport from './pages/reports/CashOnlineReport.jsx'
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="/reports/opportunity-loss" element={<OpportunityLossReport />} />
         <Route path="/reports/vehicle-volume" element={<VehicleVolumeReport />} />
         <Route path="/reports/member-visitor" element={<MemberVisitorReport />} />
+        <Route path="/reports/emergency-barrier" element={<EmergencyBarrierReport />} />
         <Route path="/reports/discount" element={<DiscountReport />} />
         <Route path="/reports/package-member" element={<PackageMemberReport />} />
         <Route path="/reports/cash-online" element={<CashOnlineReport />} />

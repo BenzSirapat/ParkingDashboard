@@ -6,7 +6,7 @@ export default function SalesTaxReport() {
     <ReportPage
       reportKey="sales-tax"
       title="Detailed Sales Tax Report"
-      subtitle="VAT-inclusive parking revenue"
+      subtitle="Issued invoices with the payment method actually taken"
       exportName="detailed-sales-tax-report"
       filters={[
         { id: 'range', label: 'Date range', type: 'daterange', colSpan: 2 },

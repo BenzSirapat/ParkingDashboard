@@ -28,6 +28,7 @@ export const NAV_GROUPS = [
       { to: '/reports/opportunity-loss', label: 'Opportunity Loss Summary', icon: IconWarning },
       { to: '/reports/vehicle-volume', label: 'Vehicle Volume Time Period', icon: IconCar },
       { to: '/reports/member-visitor', label: 'Dashboard Member Visitor', icon: IconUsers },
+      { to: '/reports/emergency-barrier', label: 'Emergency Barrier Report', icon: IconWarning },
       { to: '/tax-invoices', label: 'ABB & Tax Invoices', icon: IconReceipt },
       // { to: '/reports/discount', label: 'Discount Report', icon: IconTag },
       // { to: '/reports/package-member', label: 'Package Member Report', icon: IconUsers },

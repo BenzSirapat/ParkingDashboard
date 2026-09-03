@@ -190,7 +190,20 @@ export const usersApi = {
 
 export const doorsApi = {
   list: (signal) => api.get('/door', { signal }),
-  trigger: (doorId) => api.post(`/door/${doorId}/trigger`),
+
+  /** Reasons the site allows for a manual open (dbo.Pkopengateemergency_cause). */
+  causes: (signal) => api.get('/door/causes', { signal }),
+
+  /**
+   * Open (or close) a barrier. The body is written to the emergency log server
+   * side, so `cause` / `memo` / `carId` are what the report shows later.
+   */
+  trigger: (doorId, payload = {}) => api.post(`/door/${doorId}/trigger`, {
+    action: payload.action ?? 'open',
+    cause: payload.cause ?? null,
+    memo: payload.memo ?? null,
+    carId: payload.carId ?? null,
+  }),
 }
 
 export const systemApi = {

@@ -1,99 +1,123 @@
 /* =========================================================================
    Barriers / gates and the emergency-open audit trail.
 
-   The barrier list and the open command are real: `GET /api/door` reads
-   dbo.DoorList and `POST /api/door/{id}/trigger` sends the relay command to
-   the controller over TCP.
+   All of this is now server side:
+     GET  /api/door                      dbo.DoorList — the controllable lanes
+     GET  /api/door/causes               dbo.Pkopengateemergency_cause — reasons
+     POST /api/door/{id}/trigger         sends the relay command over TCP and
+                                         writes dbo.Pkopengateemergency
+     GET  /api/reports/emergency-barrier  reads that table back
 
-   The audit trail is NOT — the parking database has no table for it, so the
-   log below is kept per browser in localStorage. An emergency open has to be
-   traceable to the person who ordered it, so this is the piece to move server
-   side once there is a table to write to.
+   The log used to live in localStorage because the database had no table for
+   it. It does (Pkopengateemergency), so the trail is now shared by every
+   operator and survives a cleared browser.
    ========================================================================= */
 
-import { doorsApi } from './api.js'
+import { doorsApi, reportsApi, rangeParams } from './api.js'
 
-const LOG_KEY = 'singha-parking-gate-log'
-const MAX_LOG = 200
-
-/** Reasons an operator can give — free text is always allowed on top. */
+/**
+ * Fallback reasons, used only when the site has not filled in
+ * Pkopengateemergency_cause. Free text is always allowed on top.
+ */
 export const EMERGENCY_REASONS = [
-  { value: 'fire', label: 'Fire alarm / evacuation' },
-  { value: 'medical', label: 'Medical emergency' },
-  { value: 'power', label: 'Power or equipment failure' },
-  { value: 'congestion', label: 'Severe congestion' },
-  { value: 'vip', label: 'VIP / authorised convoy' },
-  { value: 'other', label: 'Other (describe below)' },
+  { value: 'Fire alarm / evacuation', label: 'Fire alarm / evacuation' },
+  { value: 'Medical emergency', label: 'Medical emergency' },
+  { value: 'Power or equipment failure', label: 'Power or equipment failure' },
+  { value: 'Severe congestion', label: 'Severe congestion' },
+  { value: 'VIP / authorised convoy', label: 'VIP / authorised convoy' },
 ]
 
-export const reasonLabel = (v) => EMERGENCY_REASONS.find((r) => r.value === v)?.label ?? v
+/** Appended to whatever the site defines, so a reason never has to be forced to fit. */
+export const OTHER_REASON = { value: 'other', label: 'Other (describe below)' }
 
 /** Barriers this deployment can control. */
 export async function fetchGates(signal) {
   const doors = await doorsApi.list(signal)
   return (doors ?? []).map((d) => ({
     id: d.doorId,
+    code: d.doorCode ?? null,
     name: d.doorName || `Door ${d.doorId}`,
-    device: d.ip_address ?? d.ipAddress ?? '—',
-    serverId: d.serverID ?? d.serverId,
+    device: d.ipAddress || '—',
+    serverId: d.serverId,
+    subDoor: d.subDoor,
+    active: d.active !== false,
     // DoorList carries no direction column; infer it from the name so the
     // cards still read as entry / exit lanes where the naming allows.
     direction: /out|exit|ออก/i.test(d.doorName || '') ? 'exit' : 'entry',
   }))
 }
 
-export function readLog() {
+/**
+ * The reasons offered in the confirm dialog: the site's own list when it has
+ * one, the built-in list otherwise, always with "Other" last.
+ */
+export async function fetchCauses(signal) {
+  let site = []
   try {
-    const raw = localStorage.getItem(LOG_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
+    const rows = await doorsApi.causes(signal)
+    site = (rows ?? [])
+      .map((c) => (c.description ?? '').trim())
+      .filter(Boolean)
+      .map((d) => ({ value: d, label: d }))
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err
+    // An older API without /door/causes should not break the control page.
   }
-}
-
-function writeLog(entries) {
-  try { localStorage.setItem(LOG_KEY, JSON.stringify(entries.slice(0, MAX_LOG))) } catch { /* ignore */ }
+  return [...(site.length ? site : EMERGENCY_REASONS), OTHER_REASON]
 }
 
 /**
- * Send the emergency-open command to a barrier and record the attempt.
+ * Send the emergency-open command to a barrier.
+ *
+ * The server writes the audit row either way — a command that never reached
+ * the controller is exactly what the log has to show — so a failure here is
+ * reported to the operator rather than swallowed.
  *
  * @param {object} gate  the gate being opened
- * @param {object} opts  { reason, note, user }
- * @returns audit entry (also appended to the local log)
+ * @param {object} opts  { cause, note, carId }
+ * @returns {{ ok, gate, cause, error, at, logId }}
  */
-export async function openBarrier(gate, { reason, note, user }) {
-  const startedAt = new Date().toISOString()
-
-  let ok = true
-  let error = null
+export async function openBarrier(gate, { cause, note, carId } = {}) {
+  const at = new Date().toISOString()
   try {
-    await doorsApi.trigger(gate.id)
+    const res = await doorsApi.trigger(gate.id, {
+      action: 'open',
+      cause: cause === 'other' ? (note || 'Other') : cause,
+      memo: note || null,
+      carId: carId || null,
+    })
+    return { ok: true, gate, cause, error: null, at: res?.triggeredAt || at, logId: res?.logId ?? null }
   } catch (err) {
-    ok = false
-    error = err?.message || 'The controller did not answer.'
+    return {
+      ok: false,
+      gate,
+      cause,
+      error: err?.message || 'The controller did not answer.',
+      at,
+      logId: null,
+    }
   }
-
-  const entry = {
-    id: `g${Date.now().toString(36)}`,
-    gateId: gate.id,
-    gateName: gate.name,
-    device: gate.device,
-    direction: gate.direction,
-    reason,
-    reasonLabel: reasonLabel(reason),
-    note: note || '',
-    by: user?.name || user?.username || 'unknown',
-    byRole: user?.role || '',
-    at: startedAt,
-    result: ok ? 'opened' : 'failed',
-    error,
-  }
-  writeLog([entry, ...readLog()])
-  return entry
 }
 
-export function clearLog() {
-  writeLog([])
+/**
+ * The emergency-open trail from dbo.Pkopengateemergency, read through the
+ * report endpoint so this page, the report table and the CSV export agree.
+ *
+ * @param {{ from: string|Date, to: string|Date }} bounds
+ */
+export async function fetchEmergencyLog(bounds, signal) {
+  const report = await reportsApi.run('emergency-barrier', rangeParams(bounds), signal)
+  return (report?.rows ?? []).map((r) => ({
+    id: r.no,
+    at: r.openedAt,
+    gateId: r.gateId,
+    gateName: r.gate,
+    by: r.user,
+    plate: r.plate,
+    cause: r.cause,
+    memo: r.memo,
+    // The server records the outcome in Memo1; a row that says FAILED is an
+    // attempt that never reached the barrier.
+    result: /\bFAILED\b/i.test(r.memo || '') ? 'failed' : 'opened',
+  }))
 }
