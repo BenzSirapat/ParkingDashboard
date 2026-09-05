@@ -5,6 +5,7 @@ import { useLang } from '../lib/i18n.jsx'
 import { useSite } from '../lib/siteContext.jsx'
 import { IconCar } from '../components/icons.jsx'
 import { LangFlag } from '../components/flags.jsx'
+import ParkingHeroArt from '../components/ParkingHeroArt.jsx'
 import './login.css'
 
 export default function Login() {
@@ -35,15 +36,7 @@ export default function Login() {
           <span className="hero-brand">Singha<strong>Parking</strong></span>
         </div>
         <div className="hero-body">
-          <h2>{t('Welcome back')} 👋</h2>
-          <p>
-            {t('Monitor traffic, revenue and tenant validations across your parking complex — all in one friendly dashboard.')}
-          </p>
-          <ul className="hero-points">
-            <li>{t('Real-time In / Out summary')}</li>
-            <li>{t('Revenue & stamp-discount tracking')}</li>
-            <li>{t('Per-tenant reports with CSV / Excel export')}</li>
-          </ul>
+          <ParkingHeroArt className="hero-art" />
         </div>
         <div className="hero-foot">{site.name} · © {new Date().getFullYear()} Singha Parking Systems</div>
         <div className="hero-glow" />
