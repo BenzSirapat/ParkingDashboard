@@ -3,3 +3,4 @@
 /example web
 /node_modules
 /dist
+.env
