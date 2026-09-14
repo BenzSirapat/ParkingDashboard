@@ -162,6 +162,13 @@ export const reportsApi = {
   list: (signal) => api.get('/reports', { signal }),
   run: (key, params, signal) => api.get(`/reports/${key}${toQuery(params)}`, { signal }),
 
+  /**
+   * The LPR capture behind one license-plate row. LPR_Log stores only the path,
+   * so the server pulls the file off the FTP server on demand — one row at a
+   * time, never with the report.
+   */
+  lprImage: (id, signal) => api.get(`/reports/license-plate/${id}/image`, { signal }),
+
   /** Streams the server-rendered CSV / Excel file straight to a download. */
   async download(key, params, format = 'csv') {
     const res = await api.get(`/reports/${key}/export${toQuery({ ...params, format })}`, { raw: true })

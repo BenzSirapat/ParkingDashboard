@@ -22,8 +22,9 @@ export const NAV_GROUPS = [
     kind: 'report',
     items: [
       { to: '/reports/sales-tax', label: 'Detailed Sales Tax Report', icon: IconReceipt },
+      { to: '/reports/sales-tax-daily', label: 'Sales Tax Daily Summary', icon: IconChartBar },
       { to: '/reports/vehicle-transaction', label: 'Vehicle Transaction Report', icon: IconDoc },
-      { to: '/reports/stamp', label: 'Stamp Report', icon: IconTag },
+      { to: '/reports/stamp', label: 'Stamp Usage Summary', icon: IconTag },
       { to: '/reports/license-plate', label: 'License Plate Reading Issue', icon: IconGlobe },
       { to: '/reports/opportunity-loss', label: 'Opportunity Loss Summary', icon: IconWarning },
       { to: '/reports/vehicle-volume', label: 'Vehicle Volume Time Period', icon: IconCar },

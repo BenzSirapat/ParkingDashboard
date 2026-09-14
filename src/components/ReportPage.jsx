@@ -31,7 +31,7 @@ function defaultValue(f) {
  * "Export PDF" print view (the browser's print dialog, no extra dependency).
  */
 export default function ReportPage({
-  reportKey, title, subtitle, filters = [], chart, chartTitle, exportName,
+  reportKey, title, subtitle, filters = [], chart, chartTitle, exportName, onRowClick,
 }) {
   const { t } = useLang()
   const { short: siteShort } = useSite()
@@ -162,6 +162,7 @@ export default function ReportPage({
             <DataTable
               columns={tableColumns}
               rows={tableRows}
+              onRowClick={onRowClick}
               footer={summaryRow}
               maxHeight={520}
               empty="No data — adjust filters and search again."

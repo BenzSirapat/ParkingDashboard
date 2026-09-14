@@ -9,13 +9,15 @@ const SERIES = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--
 export default function OpportunityLossReport() {
   const { tenantOptions, stampOptions } = useMasterData()
 
+  // The server groups by tenant *and* stamp, so the biggest losses come first
+  // and the eight shown here are the eight worst tenant / stamp pairs.
   const chart = (rows) => {
-    const top = rows.slice(0, 8)
+    const top = [...rows].sort((a, b) => (b.loss ?? 0) - (a.loss ?? 0)).slice(0, 8)
     return (
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={top} margin={{ top: 6, right: 8, left: 0, bottom: 46 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 10.5, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} angle={-30} textAnchor="end" interval={0} height={64} />
+          <XAxis dataKey="tenant" tick={{ fontSize: 10.5, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border-strong)' }} angle={-30} textAnchor="end" interval={0} height={64} />
           <YAxis tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} tickLine={false} axisLine={false} width={52} tickFormatter={(v) => fmtNum(v)} />
           <Tooltip cursor={{ fill: 'var(--surface-inset)' }} content={<ChartTooltip valueFormatter={(v) => fmtBaht(v)} />} />
           <Bar dataKey="loss" name="Opportunity Loss" radius={[5, 5, 0, 0]} maxBarSize={40}>
@@ -30,7 +32,7 @@ export default function OpportunityLossReport() {
     <ReportPage
       reportKey="opportunity-loss"
       title="Opportunity Loss Summary"
-      subtitle="Uncollected revenue per tenant"
+      subtitle="Revenue given up per tenant and stamp"
       exportName="opportunity-loss-summary"
       chart={chart}
       chartTitle="Bar comparison by tenant"
@@ -38,6 +40,7 @@ export default function OpportunityLossReport() {
         { id: 'tenantId', label: 'Tenant', type: 'select', options: tenantOptions, colSpan: 2 },
         { id: 'stampCode', label: 'Stamp code', type: 'select', options: stampOptions, colSpan: 2 },
         { id: 'range', label: 'Date range', type: 'daterange', colSpan: 2 },
+        { id: 'search', label: 'Search', type: 'text', placeholder: 'Tenant or stamp', colSpan: 2 },
       ]}
     />
   )

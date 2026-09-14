@@ -14,6 +14,7 @@ import TaxInvoicePage from './pages/TaxInvoicePage.jsx'
 import UserManagement from './pages/UserManagement.jsx'
 
 import SalesTaxReport from './pages/reports/SalesTaxReport.jsx'
+import SalesTaxDailyReport from './pages/reports/SalesTaxDailyReport.jsx'
 import VehicleTransactionReport from './pages/reports/VehicleTransactionReport.jsx'
 import StampReport from './pages/reports/StampReport.jsx'
 import LicensePlateReport from './pages/reports/LicensePlateReport.jsx'
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/users" element={<UserManagement />} />
 
         <Route path="/reports/sales-tax" element={<SalesTaxReport />} />
+        <Route path="/reports/sales-tax-daily" element={<SalesTaxDailyReport />} />
         <Route path="/reports/vehicle-transaction" element={<VehicleTransactionReport />} />
         <Route path="/reports/stamp" element={<StampReport />} />
         <Route path="/reports/license-plate" element={<LicensePlateReport />} />
