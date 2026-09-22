@@ -441,6 +441,12 @@ const TH = {
   'Full tax invoice issued': 'ออกใบกำกับภาษีเต็มรูปแล้ว',
   'Full Tax Invoices': 'ใบกำกับภาษีเต็มรูป',
   'Issued from ABB': 'ออกจากใบเสร็จ ABB',
+  // PkInvoicetemp.inv_full — the request is taken at the booth, not here.
+  'Requested at the booth': 'ลูกค้าขอที่ตู้เก็บเงิน',
+  'Requested': 'ขอแล้ว',
+  'Not requested': 'ไม่ขอ',
+  'Every ABB receipt, and whether a full tax invoice was asked for':
+    'ใบเสร็จ ABB ทุกใบ พร้อมสถานะการขอใบกำกับภาษีเต็มรูป',
   'Issue, print and deliver through e-Tax': 'ออก พิมพ์ และนำส่งผ่าน e-Tax',
   'Customer details printed on the ใบกำกับภาษีเต็มรูป': 'ข้อมูลลูกค้าที่จะพิมพ์ลงบนใบกำกับภาษีเต็มรูป',
   'Customer name': 'ชื่อลูกค้า',
