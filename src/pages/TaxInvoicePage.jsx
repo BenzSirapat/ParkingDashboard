@@ -104,7 +104,7 @@ export default function TaxInvoicePage() {
 
       <div className="stat-grid cols-3">
         <StatCard icon={IconFile} tone="blue" label="Full Tax Invoices" value={fmtNum(fullRequested)} sub="Requested at the booth" />
-        <StatCard icon={IconReceipt} tone="amber" label="Cash / Online ABB" value={`${fmtNum(stats.cash)} / ${fmtNum(stats.online)}`} sub="By payment channel" />
+        <StatCard icon={IconReceipt} tone="amber" label="Cash / QR Promptpay" value={`${fmtNum(stats.cash)} / ${fmtNum(stats.online)}`} sub="By payment channel" />
       </div>
 
       <Panel
@@ -132,7 +132,7 @@ export default function TaxInvoicePage() {
                 { key: 'vat', label: 'VAT', align: 'right', render: (r) => fmtBaht2(r.vat) },
                 { key: 'amount', label: 'Total', align: 'right', render: (r) => <strong>{fmtBaht2(r.amount)}</strong> },
                 { key: 'cash', label: 'Cash', align: 'right', render: (r) => fmtNum(r.cash) },
-                { key: 'online', label: 'Online', align: 'right', render: (r) => fmtNum(r.online) },
+                { key: 'online', label: 'QR Promptpay', align: 'right', render: (r) => fmtNum(r.online) },
               ]}
             />
           )}
