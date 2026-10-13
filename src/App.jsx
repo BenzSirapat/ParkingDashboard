@@ -12,6 +12,7 @@ import OpportunityDashboard from './pages/OpportunityDashboard.jsx'
 import GateControl from './pages/GateControl.jsx'
 import TaxInvoicePage from './pages/TaxInvoicePage.jsx'
 import UserManagement from './pages/UserManagement.jsx'
+import MemberApproval from './pages/MemberApproval.jsx'
 
 import SalesTaxReport from './pages/reports/SalesTaxReport.jsx'
 import SalesTaxDailyReport from './pages/reports/SalesTaxDailyReport.jsx'
@@ -53,6 +54,9 @@ export default function App() {
         <Route path="/gates" element={<GateControl />} />
         <Route path="/tax-invoices" element={<TaxInvoicePage />} />
         <Route path="/users" element={<UserManagement />} />
+        <Route path="/member-approval" element={<Navigate to="/member-approval/building" replace />} />
+        <Route path="/member-approval/building" element={<MemberApproval stage="building" />} />
+        <Route path="/member-approval/authority" element={<MemberApproval stage="authority" />} />
 
         <Route path="/reports/sales-tax" element={<SalesTaxReport />} />
         <Route path="/reports/sales-tax-daily" element={<SalesTaxDailyReport />} />

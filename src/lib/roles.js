@@ -20,3 +20,11 @@ export const canOperate = (role) => role === 'admin' || role === 'manager' || ro
 
 /** May manage dashboard user accounts. */
 export const canAdmin = (role) => role === 'admin'
+
+/**
+ * Member request approval steps. Everyone can open both pages; only these roles
+ * get the approve / reject buttons. The API enforces the same rule and refuses
+ * one person approving both steps.
+ */
+export const canApproveBuilding = (role) => role === 'admin' || role === 'manager' || role === 'operator'
+export const canApproveAuthority = (role) => role === 'admin'

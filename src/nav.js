@@ -1,6 +1,6 @@
 import {
   IconChartBar, IconArrowIn, IconTag, IconCar, IconWarning,
-  IconReceipt, IconDoc, IconGlobe, IconUsers, IconWallet, IconUser,
+  IconReceipt, IconDoc, IconGlobe, IconUsers, IconWallet, IconUser, IconBuilding,
 } from './components/icons.jsx'
 
 // Dashboards (grid marker) + Reports (dot marker) + Administration (admin only).
@@ -34,6 +34,15 @@ export const NAV_GROUPS = [
       // { to: '/reports/discount', label: 'Discount Report', icon: IconTag },
       // { to: '/reports/package-member', label: 'Package Member Report', icon: IconUsers },
       // { to: '/reports/cash-online', label: 'Cash or Online Payment', icon: IconWallet },
+    ],
+  },
+  {
+    // Tenant member requests: building admin first, then the top authority.
+    label: 'Member Approval',
+    kind: 'report',
+    items: [
+      { to: '/member-approval/building', label: 'Building Admin Approval', icon: IconBuilding },
+      { to: '/member-approval/authority', label: 'Top Authority Approval', icon: IconUser },
     ],
   },
   {

@@ -71,3 +71,33 @@ live in `localStorage` on the client:
   e-Tax submission is simulated.
 
 Both modules are written as the seam for the real service.
+
+## Member request approval
+
+Moved here from ParkingOperator. A tenant's request to add a parking member
+(sent from ParkingStamp) goes through two steps, each with its own page:
+
+| Page | Step | Who can approve (`src/lib/roles.js`) |
+| --- | --- | --- |
+| `/member-approval/building` | ผู้ดูแลอาคาร — first check | `admin`, `manager`, `operator` |
+| `/member-approval/authority` | ผู้มีอำนาจสูงสุด — final, creates the member | `admin` |
+
+Everyone signed in can open both pages; other roles see them read-only.
+
+The API endpoints do not exist yet, so `VITE_MEMBER_APPROVAL_MOCK=1` serves
+sample requests from `localStorage` (`src/lib/memberApproval.js`). Set it to `0`
+once ParkingDashboardAPI has:
+
+```
+GET  /member-requests?keyword=&status=   → { items, counts, total }
+GET  /member-requests/{id}               → MemberRequest
+POST /member-requests/{id}/approve       { remark }        → MemberRequest
+POST /member-requests/{id}/reject        { remark }  (required) → MemberRequest
+```
+
+Status values: `PENDING_OPERATOR` (waiting for the building admin),
+`PENDING_AUTHORITY`, `APPROVED` (with `customerCode`), `REJECTED`. The
+`MemberRequest` shape is in ParkingOperator commit `669c3d1`
+(`API-CONTRACT.md` §5). The server must take the step from the caller's role,
+answer an error when the request is no longer at that step, and refuse the
+same person approving both steps.
