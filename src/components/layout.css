@@ -229,5 +229,19 @@
 
 @keyframes clock-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
 
+/* Phones: the top bar must shrink to the screen, otherwise mobile browsers
+   widen the whole page and every page (and modal) needs a sideways nudge. */
+@media (max-width: 600px) {
+  .topbar { gap: 8px; padding: 10px 12px; }
+  .topbar-left { gap: 10px; min-width: 0; flex: 1 1 auto; }
+  .topbar-left > div { min-width: 0; }
+  .page-title { font-size: 16px; }
+  .page-title, .page-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar-actions { gap: 6px; flex-shrink: 0; }
+  .topbar .icon-btn { width: 34px; height: 34px; }
+  .topbar .lang-btn { width: auto; padding: 0 8px; gap: 5px; }
+  .topbar .lang-code { display: none; }
+}
+
 @media (max-width: 1280px) { .clock-bar .clock-date { display: none; } }
 @media (max-width: 1100px) { .clock-bar { display: none; } }
