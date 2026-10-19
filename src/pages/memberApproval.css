@@ -1,7 +1,12 @@
 /* Member request approval (building admin / top authority) */
 
-.chip.ma-mock { background: var(--wash-amber); color: #8a6100; }
-:root[data-theme="dark"] .chip.ma-mock { color: var(--warn); }
+.ma-granted { display: block; margin-top: 3px; font-size: 12px; }
+.ma-hint { margin: -2px 0 12px; font-size: 13px; line-height: 1.5; }
+.ma-warn { color: var(--danger); font-size: 12px; }
+.ma-doc-image {
+  display: block; max-width: 100%; max-height: 70vh; margin: 0 auto;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+}
 
 /* ---- status tabs ---- */
 .ma-tabs { margin-bottom: 14px; flex-wrap: wrap; }

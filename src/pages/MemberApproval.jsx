@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Panel, DataTable } from '../components/ui.jsx'
 import StatCard from '../components/StatCard.jsx'
 import { AsyncState } from '../components/AsyncState.jsx'
@@ -8,10 +9,10 @@ import { useLang } from '../lib/i18n.jsx'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useApi } from '../lib/useApi.js'
 import { canApproveAuthority, canApproveBuilding } from '../lib/roles.js'
-import { fmtBaht, fmtDateTime, fmtNum } from '../lib/format.js'
+import { fmtDateTime, fmtNum } from '../lib/format.js'
 import {
-  memberApprovalApi, fullName, plates, monthlyFee,
-  STAGES, STATUS, STATUS_META, USE_MOCK,
+  memberApprovalApi, fullName, plates, grantedRight, notifyMemberRequestsChanged,
+  STAGES, STATUS, STATUS_META,
 } from '../lib/memberApproval.js'
 import './dashboard.css'
 import './memberApproval.css'
@@ -29,7 +30,7 @@ const TAB_ALL = 'all'
  */
 export default function MemberApproval({ stage: stageKey }) {
   const { t } = useLang()
-  const { user, role } = useAuth()
+  const { role } = useAuth()
   const stage = STAGES[stageKey]
   const canAct = stageKey === 'authority' ? canApproveAuthority(role) : canApproveBuilding(role)
 
@@ -46,6 +47,15 @@ export default function MemberApproval({ stage: stageKey }) {
 
   // Switching between the two pages keeps this component mounted.
   useEffect(() => { setTab(TAB_MINE); setOpenId(null); setFlash(null) }, [stageKey])
+
+  // The top-bar bell links straight to a request: ?open=<requestId>.
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    const open = Number(params.get('open'))
+    if (!open) return
+    setOpenId(open)
+    setParams((p) => { p.delete('open'); return p }, { replace: true })
+  }, [params, setParams])
 
   const list = useApi((signal) => memberApprovalApi.list({ keyword: term }, signal), [term])
   const counts = list.data?.counts ?? {}
@@ -71,6 +81,7 @@ export default function MemberApproval({ stage: stageKey }) {
     setFlash({ action, req })
     setTimeout(() => setFlash(null), 6000)
     list.reload()
+    notifyMemberRequestsChanged()
   }
 
   return (
@@ -80,7 +91,6 @@ export default function MemberApproval({ stage: stageKey }) {
           <div className="hint-label">{t(stage.sub)}</div>
           <div className="chips">
             <span className="chip">{t('Tenant submits → Building admin → Top authority')}</span>
-            {USE_MOCK && <span className="chip ma-mock">{t('Mock data')}</span>}
           </div>
         </div>
       </div>
@@ -150,7 +160,16 @@ export default function MemberApproval({ stage: stageKey }) {
                 { key: 'name', label: 'Full name', render: (r) => fullName(r.member) },
                 { key: 'companyName', label: 'Company' },
                 { key: 'plates', label: 'License Plate', render: (r) => plates(r).join(', ') || '—' },
-                { key: 'fee', label: 'Monthly fee', align: 'right', render: (r) => fmtBaht(monthlyFee(r)) },
+                {
+                  key: 'right',
+                  label: 'Parking right',
+                  render: (r) => (
+                    <>
+                      {r.requestedRight && <span className="pill">{r.requestedRight}</span>}
+                      {grantedRight(r) && <small className="muted ma-granted">{grantedRight(r)}</small>}
+                    </>
+                  ),
+                },
                 {
                   key: 'status',
                   label: 'Status',
@@ -175,7 +194,6 @@ export default function MemberApproval({ stage: stageKey }) {
         requestId={openId}
         stage={stage}
         canAct={canAct}
-        user={user}
         onClose={() => setOpenId(null)}
         onActed={acted}
       />

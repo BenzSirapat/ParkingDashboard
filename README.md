@@ -84,20 +84,29 @@ Moved here from ParkingOperator. A tenant's request to add a parking member
 
 Everyone signed in can open both pages; other roles see them read-only.
 
-The API endpoints do not exist yet, so `VITE_MEMBER_APPROVAL_MOCK=1` serves
-sample requests from `localStorage` (`src/lib/memberApproval.js`). Set it to `0`
-once ParkingDashboardAPI has:
+Requests are stored in `dbo.PkMemberRequest` (+ `PkMemberRequestVehicle`,
+`PkMemberRequestApproval`) until the final approval — run
+`PaidStampParkingAPI/StampAPI/Scripts/2026-10-19_AddMemberRequestAndEmailVerify.sql`
+first. The tenant asks only for CIR or TEMP; the building admin picks the
+contract from the tenant's `Pkcar_contact` per vehicle type, the contract type
+(0 Temp … 4 Cir up Fix), fee, billing and dates. The final approval inserts
+`USERINFO`, one `User_vehicle` and one `PkCard` per vehicle (card numbers from
+`MemberCard` in the API's appsettings).
 
 ```
-GET  /member-requests?keyword=&status=   → { items, counts, total }
-GET  /member-requests/{id}               → MemberRequest
-POST /member-requests/{id}/approve       { remark }        → MemberRequest
-POST /member-requests/{id}/reject        { remark }  (required) → MemberRequest
+GET  /member-requests?keyword=&status=           → { items, counts, total }
+GET  /member-requests/summary                    → { pendingOperator, pendingAuthority, latest }
+GET  /member-requests/{id}                       → MemberRequest
+GET  /member-requests/{id}/contracts             → the tenant's contracts
+GET  /member-requests/{id}/vehicles/{vid}/image  → { imageName, dataUrl }
+POST /member-requests/{id}/approve   { remark, grant }   → MemberRequest
+POST /member-requests/{id}/reject    { remark } (required) → MemberRequest
 ```
 
 Status values: `PENDING_OPERATOR` (waiting for the building admin),
-`PENDING_AUTHORITY`, `APPROVED` (with `customerCode`), `REJECTED`. The
-`MemberRequest` shape is in ParkingOperator commit `669c3d1`
-(`API-CONTRACT.md` §5). The server must take the step from the caller's role,
-answer an error when the request is no longer at that step, and refuse the
-same person approving both steps.
+`PENDING_AUTHORITY`, `APPROVED` (with `customerCode`), `REJECTED`, `CANCELLED`
+(withdrawn by the tenant). The server takes the step from the request status
+and the caller's role and refuses the same person approving both steps.
+
+The bell in the top bar polls `/member-requests/summary` and lists what is
+waiting, split by whose approval it needs.

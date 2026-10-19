@@ -7,6 +7,7 @@ import { NAV_GROUPS, ALL_NAV } from '../nav.js'
 import { IconLogout, IconSun, IconMoon, IconCar, IconMenu } from './icons.jsx'
 import { LangFlag } from './flags.jsx'
 import ClockBar from './ClockBar.jsx'
+import NotificationBell from './NotificationBell.jsx'
 import { useSite } from '../lib/siteContext.jsx'
 import { roleLabel } from '../lib/roles.js'
 import './layout.css'
@@ -72,6 +73,7 @@ export default function Layout() {
 
           <div className="topbar-actions">
             <ClockBar />
+            <NotificationBell />
             <button className="icon-btn lang-btn" title={t('Language')} onClick={toggleLang} aria-label={t('Language')}>
               <LangFlag lang={lang} />
               <span className="lang-code">{lang === 'en' ? 'EN' : 'ไทย'}</span>
