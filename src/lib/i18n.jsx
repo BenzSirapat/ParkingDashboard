@@ -740,6 +740,54 @@ const TH = {
   'No car contract was granted at the building admin step.': 'ขั้นผู้ดูแลอาคารยังไม่ได้กำหนดสัญญารถยนต์',
   'No motorcycle contract was granted at the building admin step.': 'ขั้นผู้ดูแลอาคารยังไม่ได้กำหนดสัญญารถจักรยานยนต์',
 
+  // ---- member approval: CRM / high authority (update comment 22/10/2026) ----
+  'CRM Approval': 'อนุมัติโดย CRM',
+  'High Authority Approval': 'อนุมัติโดยผู้บริหาร (High authority)',
+  'CRM approves rights within the contract and proposes TEMP / special cases':
+    'CRM อนุมัติสิทธิ์ตามสัญญา (CIR) และเสนอเรื่อง TEMP / กรณีพิเศษให้ผู้บริหาร',
+  'TEMP, Excel imports and requests outside the contract — applied on approve':
+    'คำขอ TEMP, นำเข้าจาก Excel และนอกเหนือสัญญา — อนุมัติแล้วบันทึกเข้าระบบทันที',
+  'Tenant submits → CRM → High authority (TEMP / Excel / outside the contract)':
+    'ผู้เช่าส่งคำขอ → CRM → ผู้บริหาร (TEMP / Excel / นอกเหนือสัญญา)',
+  'Awaiting CRM': 'รอ CRM อนุมัติ',
+  'Awaiting high authority': 'รอผู้บริหารอนุมัติ',
+  'CRM': 'CRM',
+  'High authority': 'ผู้บริหาร (High authority)',
+  'View only': 'ดูได้อย่างเดียว',
+  'Member approval': 'สิทธิ์อนุมัติสมาชิก',
+  'approvelevel: 2 = CRM approves rights within the contract, 3 = high authority approves TEMP / Excel / outside the contract.':
+    'approvelevel: 2 = CRM อนุมัติสิทธิ์ตามสัญญา, 3 = ผู้บริหารอนุมัติ TEMP / Excel / นอกเหนือสัญญา',
+  'Add member': 'ขอเพิ่มสมาชิก',
+  'Exchange member': 'เปลี่ยนคนใช้สิทธิ์',
+  'Delete member': 'ขอลบสมาชิก',
+  'Request type': 'ประเภทคำขอ',
+  'Excel import': 'นำเข้าจาก Excel',
+  'Applied to the member list': 'บันทึกเข้าระบบสมาชิกแล้ว',
+  'Approved — sent to the high authority': 'อนุมัติแล้ว — ส่งต่อให้ผู้บริหาร',
+  'Approved — member retired': 'อนุมัติแล้ว — ยกเลิกสมาชิกเรียบร้อย',
+  'Approve and send to the high authority': 'อนุมัติและส่งต่อผู้บริหาร',
+  'Approve and pass to the high authority.': 'อนุมัติและส่งต่อให้ผู้บริหารพิจารณา',
+  'Approval retires the member immediately.': 'เมื่ออนุมัติ สิทธิ์และบัตรของสมาชิกนี้จะหมดอายุทันที',
+  'Approval retires the old member and creates the new one immediately.': 'เมื่ออนุมัติ ระบบจะยกเลิกสมาชิกคนเดิมและสร้างสมาชิกคนใหม่ทันที',
+  'Only CRM (approve level 2) can approve this step — you can view only.': 'ขั้นนี้อนุมัติได้เฉพาะ CRM (approvelevel 2) — คุณดูได้อย่างเดียว',
+  'Only the high authority (approve level 3) can approve this step — you can view only.': 'ขั้นนี้อนุมัติได้เฉพาะผู้บริหาร (approvelevel 3) — คุณดูได้อย่างเดียว',
+  'Only CRM (approve level 2) can approve this step.': 'ขั้นนี้อนุมัติได้เฉพาะ CRM (approvelevel 2)',
+  'Only the high authority (approve level 3) can give this approval.': 'ขั้นนี้อนุมัติได้เฉพาะผู้บริหาร (approvelevel 3)',
+  'Member to delete': 'สมาชิกที่ขอลบ',
+  'Member to be replaced': 'สมาชิกคนเดิมที่ถูกแทนที่',
+  'No longer an active member': 'ไม่ได้เป็นสมาชิกแล้ว',
+  'until': 'ถึง',
+  'On approval the rights and cards of this member expire — the records are kept, not deleted.':
+    'เมื่ออนุมัติ สิทธิ์และบัตรของสมาชิกนี้จะหมดอายุ — ข้อมูลยังเก็บไว้ในระบบ ไม่ถูกลบ',
+  'This contract is already at its vehicle limit — the request goes on to the high authority.':
+    'สัญญานี้ใช้สิทธิ์ครบจำนวนรถแล้ว — คำขอจะถูกส่งต่อให้ผู้บริหารอนุมัติ',
+  'Imported from Excel — after CRM this goes on to the high authority.': 'คำขอนำเข้าจาก Excel — หลัง CRM อนุมัติจะส่งต่อให้ผู้บริหาร',
+  'TEMP / outside the contract — after CRM this goes on to the high authority.': 'สิทธิ์ TEMP / นอกเหนือสัญญา — หลัง CRM อนุมัติจะส่งต่อให้ผู้บริหาร',
+  'Driving licence copy': 'สำเนาใบขับขี่',
+  'No car contract was granted at the CRM step.': 'ขั้น CRM ยังไม่ได้กำหนดสัญญารถยนต์',
+  'No motorcycle contract was granted at the CRM step.': 'ขั้น CRM ยังไม่ได้กำหนดสัญญารถจักรยานยนต์',
+  'The request does not name the member to replace.': 'คำขอนี้ไม่ได้ระบุสมาชิกคนเดิม',
+
   // ---- shared actions ----
   'Save': 'บันทึก',
   'Cancel': 'ยกเลิก',

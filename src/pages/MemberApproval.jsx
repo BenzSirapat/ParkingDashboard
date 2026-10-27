@@ -12,7 +12,7 @@ import { canApproveAuthority, canApproveBuilding } from '../lib/roles.js'
 import { fmtDateTime, fmtNum } from '../lib/format.js'
 import {
   memberApprovalApi, fullName, plates, grantedRight, notifyMemberRequestsChanged,
-  STAGES, STATUS, STATUS_META,
+  STAGES, STATUS, STATUS_META, TYPE, TYPE_META,
 } from '../lib/memberApproval.js'
 import './dashboard.css'
 import './memberApproval.css'
@@ -22,17 +22,18 @@ const TAB_ALL = 'all'
 
 /**
  * Member request approval — one page per step.
- *   /member-approval/building   ผู้ดูแลอาคาร   (first check)
- *   /member-approval/authority  ผู้มีอำนาจสูงสุด (final approval, creates the member)
+ *   /member-approval/building   CRM (approvelevel 2) — CIR within the contract ends here
+ *   /member-approval/authority  High authority (approvelevel 3) — TEMP / Excel / outside the contract
+ * Accounts with neither level (e.g. Parking) only view.
  *
  * The list is fetched once for every status and split into tabs client side,
  * so the counts on the tabs always match the table.
  */
 export default function MemberApproval({ stage: stageKey }) {
   const { t } = useLang()
-  const { role } = useAuth()
+  const { approveLevel } = useAuth()
   const stage = STAGES[stageKey]
-  const canAct = stageKey === 'authority' ? canApproveAuthority(role) : canApproveBuilding(role)
+  const canAct = stageKey === 'authority' ? canApproveAuthority(approveLevel) : canApproveBuilding(approveLevel)
 
   const [tab, setTab] = useState(TAB_MINE)
   const [query, setQuery] = useState('')
@@ -90,7 +91,7 @@ export default function MemberApproval({ stage: stageKey }) {
         <div>
           <div className="hint-label">{t(stage.sub)}</div>
           <div className="chips">
-            <span className="chip">{t('Tenant submits → Building admin → Top authority')}</span>
+            <span className="chip">{t('Tenant submits → CRM → High authority (TEMP / Excel / outside the contract)')}</span>
           </div>
         </div>
       </div>
@@ -99,19 +100,24 @@ export default function MemberApproval({ stage: stageKey }) {
         <div className={`banner ${flash.action === 'APPROVE' ? 'ok' : 'danger'}`}>
           {flash.req.requestNo} — {t(flash.action === 'REJECT'
             ? 'Rejected'
-            : flash.req.status === STATUS.APPROVED ? 'Approved — member created' : 'Approved — sent to the top authority')}
+            : flash.req.status !== STATUS.APPROVED ? 'Approved — sent to the high authority'
+              : flash.req.requestType === TYPE.DELETE ? 'Approved — member retired' : 'Approved — member created')}
           {flash.req.customerCode ? ` · ${t('Customer code')} ${flash.req.customerCode}` : ''}
         </div>
       )}
 
       {!canAct && (
-        <div className="banner warn">{t('Your role can view these requests but cannot approve this step.')}</div>
+        <div className="banner warn">
+          {t(stageKey === 'authority'
+            ? 'Only the high authority (approve level 3) can approve this step — you can view only.'
+            : 'Only CRM (approve level 2) can approve this step — you can view only.')}
+        </div>
       )}
 
       <div className="stat-grid">
         <StatCard icon={IconClock} tone="amber" label="Waiting for this step" value={fmtNum(counts[stage.status])} sub={stage.title} />
         <StatCard icon={IconDoc} tone="blue" label={STATUS_META[otherStatus].label} value={fmtNum(counts[otherStatus])} sub="Other step" />
-        <StatCard icon={IconUsers} tone="green" label="Approved" value={fmtNum(counts[STATUS.APPROVED])} sub="Members created" />
+        <StatCard icon={IconUsers} tone="green" label="Approved" value={fmtNum(counts[STATUS.APPROVED])} sub="Applied to the member list" />
         <StatCard icon={IconWarning} tone="red" label="Rejected" value={fmtNum(counts[STATUS.REJECTED])} sub="Returned to the tenant" />
       </div>
 
@@ -157,6 +163,16 @@ export default function MemberApproval({ stage: stageKey }) {
               columns={[
                 { key: 'requestNo', label: 'Request no.', render: (r) => <strong>{r.requestNo}</strong> },
                 { key: 'submittedAt', label: 'Submitted', render: (r) => fmtDateTime(r.submittedAt) },
+                {
+                  key: 'type',
+                  label: 'Type',
+                  render: (r) => (
+                    <>
+                      <span className={`pill ${TYPE_META[r.requestType]?.pill ?? ''}`}>{t(TYPE_META[r.requestType]?.label ?? r.requestType)}</span>
+                      {r.source === 'EXCEL' && <small className="muted ma-granted">{t('Excel import')}</small>}
+                    </>
+                  ),
+                },
                 { key: 'name', label: 'Full name', render: (r) => fullName(r.member) },
                 { key: 'companyName', label: 'Company' },
                 { key: 'plates', label: 'License Plate', render: (r) => plates(r).join(', ') || '—' },

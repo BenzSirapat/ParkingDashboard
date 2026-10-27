@@ -7,10 +7,14 @@ import { useApi } from '../lib/useApi.js'
 import { fmtBaht, fmtDate, fmtDateTime } from '../lib/format.js'
 import {
   memberApprovalApi, fullName, stepRecord, vehiclesOf, contactTypeLabel,
-  BILLING, CONTACT_TYPES, RIGHT_LABEL, STATUS, STATUS_META, STEP, STEP_LABEL,
+  BILLING, CONTACT_TYPES, RIGHT_LABEL, STATUS, STATUS_META, STEP, STEP_LABEL, TYPE, TYPE_META,
 } from '../lib/memberApproval.js'
 
-const STEPS = [STEP.SUBMIT, STEP.BUILDING, STEP.AUTHORITY]
+/** A CIR right within the contract ends at CRM; the rest also needs the high authority. */
+const stepsOf = (req) =>
+  req.requiresAuthority || stepRecord(req, STEP.AUTHORITY) || req.status === STATUS.PENDING_AUTHORITY
+    ? [STEP.SUBMIT, STEP.BUILDING, STEP.AUTHORITY]
+    : [STEP.SUBMIT, STEP.BUILDING]
 const fmtDay = (v) => (v ? fmtDate(v, { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
 const ymd = (v) => (v ? String(v).slice(0, 10) : '')
 
@@ -39,7 +43,35 @@ function Info({ items }) {
   )
 }
 
-/** What the building admin granted, read-only. */
+/** The existing member an exchange / delete acts on. */
+function TargetInfo({ req }) {
+  const { t } = useLang()
+  const tg = req.target
+  if (!tg) return null
+  const rights = [
+    tg.carContactId && `${t('Car')}: ${tg.carContactName} (${t('until')} ${fmtDay(tg.carExpireDate)})`,
+    tg.motorContactId && `${t('Motorcycle')}: ${tg.motorContactName} (${t('until')} ${fmtDay(tg.motorExpireDate)})`,
+  ].filter(Boolean).join(' / ')
+  return (
+    <section className="ma-section">
+      <h4>{t(req.requestType === TYPE.DELETE ? 'Member to delete' : 'Member to be replaced')}</h4>
+      <Info
+        items={[
+          ['Customer code', tg.customerCode],
+          ['Full name', tg.fullName],
+          ['Mobile', tg.mobile],
+          ['License Plate', tg.plates],
+          ['Parking right', rights || (tg.active ? '—' : t('No longer an active member'))],
+        ]}
+      />
+      <p className="muted ma-hint">
+        {t('On approval the rights and cards of this member expire — the records are kept, not deleted.')}
+      </p>
+    </section>
+  )
+}
+
+/** What CRM granted, read-only. */
 function GrantInfo({ req }) {
   const { t } = useLang()
   const g = req.grant
@@ -65,14 +97,17 @@ function GrantInfo({ req }) {
 const contractLabel = (c) =>
   `${c.name || c.id} · ${c.right} · ${c.used}/${c.amount ?? '∞'}${c.pricePerCar ? ` · ${fmtBaht(c.pricePerCar)}` : ''}`
 
-/** The defaults the grant form starts from: the request's own values, else the first matching contract. */
+/**
+ * The defaults the grant form starts from: the request's own values, then (for an
+ * exchange) the old member's contract, else the first matching contract.
+ */
 function initialGrant(req, contracts) {
   const pick = (typeCar, id) => {
     const own = contracts.filter((c) => c.typeCar === typeCar)
     return own.find((c) => c.id === id) ?? own.find((c) => c.right === req.requestedRight) ?? own[0] ?? null
   }
-  const car = pick('C', req.grant?.carContactId)
-  const motor = pick('M', req.grant?.motorContactId)
+  const car = pick('C', req.grant?.carContactId ?? req.target?.carContactId)
+  const motor = pick('M', req.grant?.motorContactId ?? req.target?.motorContactId)
   return {
     carContactId: car?.id ?? '',
     carContactType: req.grant?.carContactType ?? car?.defaultContactType ?? 0,
@@ -87,10 +122,29 @@ function initialGrant(req, contracts) {
 }
 
 /**
- * Building admin step: which of the tenant's contracts each vehicle type gets,
- * the contract type, fee, billing and the usage dates.
+ * True when the grant is a TEMP / rent contract or goes over the contract's
+ * vehicle count — the server then sends it on to the high authority. An exchange
+ * on the old member's own contract frees that member's place, so it is not over.
  */
-function GrantForm({ req, grant, onChange }) {
+function outsideContract(req, grant, list) {
+  if (!grant) return false
+  const over = (typeCar, key, typeKey, count, targetId) => {
+    if (!count) return false
+    const c = list.find((x) => x.id === grant[key] && x.typeCar === typeCar)
+    if (!c) return false
+    if (c.right === 'TEMP' || grant[typeKey] === 0) return true
+    const freed = req.requestType === TYPE.EXCHANGE && targetId === c.id ? 1 : 0
+    return c.amount != null && c.used - freed + count > c.amount
+  }
+  return over('C', 'carContactId', 'carContactType', req.member?.cars?.length || 0, req.target?.carContactId)
+    || over('M', 'motorContactId', 'motorContactType', req.member?.motorcycles?.length || 0, req.target?.motorContactId)
+}
+
+/**
+ * CRM step: which of the tenant's contracts each vehicle type gets, the
+ * contract type, fee, billing and the usage dates.
+ */
+function GrantForm({ req, grant, onChange, onOutside }) {
   const { t } = useLang()
   const contracts = useApi((signal) => memberApprovalApi.contracts(req.requestId, signal), [req.requestId])
   const list = contracts.data ?? []
@@ -99,6 +153,9 @@ function GrantForm({ req, grant, onChange }) {
     if (contracts.data) onChange(initialGrant(req, contracts.data))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contracts.data])
+
+  const outside = outsideContract(req, grant, list)
+  useEffect(() => { onOutside(outside) }, [outside, onOutside])
 
   if (contracts.loading && !contracts.data) return <Loading height={120} />
   if (contracts.error) return <ErrorState error={contracts.error} onRetry={contracts.reload} height={120} />
@@ -122,7 +179,7 @@ function GrantForm({ req, grant, onChange }) {
             <option value="">{t(options.length ? '— choose a contract —' : 'This tenant has no contract for this vehicle type')}</option>
             {options.map((c) => <option key={c.id} value={c.id}>{contractLabel(c)}</option>)}
           </select>
-          {over && <small className="ma-warn">{t('This contract is already at its vehicle limit.')}</small>}
+          {over && <small className="ma-warn">{t('This contract is already at its vehicle limit — the request goes on to the high authority.')}</small>}
         </div>
         <div className="field">
           <label>{t('Contract type')}</label>
@@ -155,6 +212,13 @@ function GrantForm({ req, grant, onChange }) {
         {t('The tenant asked for')} <strong>{t(RIGHT_LABEL[req.requestedRight] ?? req.requestedRight ?? '—')}</strong>.
         {' '}{t('Choose the contract, type and fee the building charges — the tenant does not see prices.')}
       </p>
+      {(req.requiresAuthority || outside) && (
+        <div className="banner warn">
+          {t(req.source === 'EXCEL'
+            ? 'Imported from Excel — after CRM this goes on to the high authority.'
+            : 'TEMP / outside the contract — after CRM this goes on to the high authority.')}
+        </div>
+      )}
       <div className="form-grid">
         {cars > 0 && block('C', 'Car contract', cars, 'carContactId', 'carContactType', 'carMemberFee')}
         {motorcycles > 0 && block('M', 'Motorcycle contract', motorcycles, 'motorContactId', 'motorContactType', 'motorMemberFee')}
@@ -192,16 +256,19 @@ function grantError(req, grant) {
   return null
 }
 
-/** The registration copy the tenant attached, fetched one vehicle at a time. */
+/** A copy the tenant attached (registration per vehicle, or the driving licence), fetched on demand. */
 function VehicleImage({ requestId, vehicle, onClose }) {
   const { t } = useLang()
+  const isLicense = vehicle?.kind === 'license'
   const image = useApi(
-    (signal) => memberApprovalApi.vehicleImage(requestId, vehicle.id, signal),
-    [requestId, vehicle?.id],
+    (signal) => (isLicense
+      ? memberApprovalApi.licenseImage(requestId, signal)
+      : memberApprovalApi.vehicleImage(requestId, vehicle.id, signal)),
+    [requestId, vehicle?.id, isLicense],
     { enabled: !!vehicle }
   )
   return (
-    <Modal open={!!vehicle} title="Registration copy" sub={vehicle?.licensePlate} width={760} onClose={onClose}>
+    <Modal open={!!vehicle} title={isLicense ? 'Driving licence copy' : 'Registration copy'} sub={vehicle?.licensePlate} width={760} onClose={onClose}>
       {image.loading && <Loading height={240} />}
       {image.error && <ErrorState error={image.error} onRetry={image.reload} height={240} />}
       {image.data?.dataUrl && (
@@ -230,12 +297,23 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [imageOf, setImageOf] = useState(null)
+  const [outside, setOutside] = useState(false)
 
-  useEffect(() => { setRemark(''); setGrant(null); setConfirm(null); setError(null); setImageOf(null) }, [requestId])
+  useEffect(() => {
+    setRemark(''); setGrant(null); setConfirm(null); setError(null); setImageOf(null); setOutside(false)
+  }, [requestId])
 
   const actionable = canAct && req?.status === stage.status
-  const isFinal = stage.step === STEP.AUTHORITY
-  const granting = actionable && !isFinal
+  const isDelete = req?.requestType === TYPE.DELETE
+  const granting = actionable && stage.step === STEP.BUILDING && !isDelete
+  // The approve that applies the request: high authority always, CRM when the
+  // right stays within the contract.
+  const isFinal = stage.step === STEP.AUTHORITY || (!req?.requiresAuthority && !(granting && outside))
+  const finalMessage = isDelete
+    ? 'Approval retires the member immediately.'
+    : req?.requestType === TYPE.EXCHANGE
+      ? 'Approval retires the old member and creates the new one immediately.'
+      : 'Final approval creates the member immediately.'
   const needsReason = !remark.trim()
 
   const ask = (action) => {
@@ -282,18 +360,24 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
   )
 
   const statusBanner = () => {
-    if (req.status === STATUS.APPROVED) return ['ok', `${t('Approved — customer code')} ${req.customerCode || '—'}`]
+    if (req.status === STATUS.APPROVED) {
+      return ['ok', isDelete
+        ? `${t('Approved — member retired')} ${req.customerCode || ''}`
+        : `${t('Approved — customer code')} ${req.customerCode || '—'}`]
+    }
     if (req.status === STATUS.REJECTED) return ['danger', t('This request was rejected.')]
     if (req.status === STATUS.CANCELLED) return ['danger', t('The tenant cancelled this request.')]
     if (req.status !== stage.status) return ['warn', `${t(STATUS_META[req.status]?.label)} — ${t('not at this step.')}`]
-    return ['warn', t('Your role can view this request but cannot approve this step.')]
+    return ['warn', t(stage.step === STEP.AUTHORITY
+      ? 'Only the high authority (approve level 3) can approve this step — you can view only.'
+      : 'Only CRM (approve level 2) can approve this step — you can view only.')]
   }
 
   return (
     <>
       <Modal
         open={requestId != null}
-        title={req ? `${t('Member request')} ${req.requestNo}` : 'Member request'}
+        title={req ? `${t(TYPE_META[req.requestType]?.label ?? 'Member request')} ${req.requestNo}` : 'Member request'}
         sub={req ? req.companyName : undefined}
         width={880}
         onClose={() => (busy || confirm ? null : onClose())}
@@ -304,7 +388,7 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
               <>
                 <button className="btn danger" onClick={() => ask('REJECT')} disabled={busy}>{t('Reject')}</button>
                 <button className="btn primary" onClick={() => ask('APPROVE')} disabled={busy}>
-                  {t(isFinal ? 'Final approve' : 'Approve')}
+                  {t(isFinal ? 'Final approve' : 'Approve and send to the high authority')}
                 </button>
               </>
             )}
@@ -317,7 +401,7 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
         {req && (
           <>
             <ol className="ma-steps">
-              {STEPS.map((step) => {
+              {stepsOf(req).map((step) => {
                 const rec = step === STEP.SUBMIT
                   ? { byName: req.submittedBy?.byName || req.submittedBy?.byUsername, at: req.submittedAt }
                   : stepRecord(req, step)
@@ -349,18 +433,25 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
                   ['Email', member.email],
                   ['ID card / reference', member.idCard],
                   ['Submitted by', `${req.submittedBy?.byName || req.submittedBy?.byUsername || '—'} · ${fmtDateTime(req.submittedAt)}`],
+                  ['Request type', `${t(TYPE_META[req.requestType]?.label ?? req.requestType)}${req.source === 'EXCEL' ? ` · ${t('Excel import')}` : ''}`],
                   ['Requested right', t(RIGHT_LABEL[req.requestedRight] ?? req.requestedRight)],
-                  ['Requested period', `${fmtDay(req.startDate)} – ${fmtDay(req.expireDate)}`],
+                  !isDelete && ['Requested period', `${fmtDay(req.startDate)} – ${fmtDay(req.expireDate)}`],
+                  member.hasLicenseImage && [
+                    'Driving licence copy',
+                    <button key="lic" className="btn tiny" onClick={() => setImageOf({ kind: 'license', id: 'license', licensePlate: fullName(member) })}>{t('View')}</button>,
+                  ],
                   member.remark && ['Note', member.remark, true],
                 ]}
               />
             </section>
 
+            <TargetInfo req={req} />
+
             {granting
-              ? <GrantForm req={req} grant={grant} onChange={setGrant} />
+              ? <GrantForm req={req} grant={grant} onChange={setGrant} onOutside={setOutside} />
               : <GrantInfo req={req} />}
 
-            <section className="ma-section">
+            {!isDelete && <section className="ma-section">
               <h4>{t('Vehicles')} ({vehicles.length})</h4>
               <DataTable
                 rows={vehicles.map((v, i) => ({ ...v, _key: `${v.type}-${v.licensePlate}-${i}` }))}
@@ -380,7 +471,7 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
                   },
                 ]}
               />
-            </section>
+            </section>}
 
             <section className="ma-section">
               <h4>{t('History')}</h4>
@@ -421,7 +512,7 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
         open={!!confirm}
         title={confirm === 'APPROVE' ? 'Confirm approval' : 'Confirm rejection'}
         message={req && (confirm === 'APPROVE'
-          ? `${req.requestNo} — ${t(isFinal ? 'Final approval creates the member immediately.' : 'Approve and pass to the top authority.')}`
+          ? `${req.requestNo} — ${t(isFinal ? finalMessage : 'Approve and pass to the high authority.')}`
           : `${req.requestNo} — ${t('The request is closed and returned to the tenant.')}`)}
         confirmLabel={confirm === 'APPROVE' ? (isFinal ? 'Final approve' : 'Approve') : 'Reject'}
         danger={confirm === 'REJECT'}

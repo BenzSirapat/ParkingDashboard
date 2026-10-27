@@ -37,12 +37,13 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    // Tenant member requests: building admin first, then the top authority.
+    // Tenant member requests: CRM (approvelevel 2) first, then the high authority (3)
+    // for TEMP / Excel / outside the contract. Everyone else views only.
     label: 'Member Approval',
     kind: 'report',
     items: [
-      { to: '/member-approval/building', label: 'Building Admin Approval', icon: IconBuilding },
-      { to: '/member-approval/authority', label: 'Top Authority Approval', icon: IconUser },
+      { to: '/member-approval/building', label: 'CRM Approval', icon: IconBuilding },
+      { to: '/member-approval/authority', label: 'High Authority Approval', icon: IconUser },
     ],
   },
   {

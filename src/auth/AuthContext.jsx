@@ -76,6 +76,8 @@ export function AuthProvider({ children }) {
     refresh,
     changePassword,
     role: user?.role ?? null,
+    /** PkAdminsystem.approvelevel: 2 = CRM, 3 = high authority, otherwise view only. */
+    approveLevel: user?.approveLevel ?? 0,
     /** May open barriers and issue / send tax invoices. */
     canOperate: canOperate(user?.role),
     /** May manage dashboard user accounts. */

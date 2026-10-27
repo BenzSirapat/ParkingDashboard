@@ -9,13 +9,13 @@ import { useAuth } from '../auth/AuthContext.jsx'
 import { useApi } from '../lib/useApi.js'
 import { usersApi } from '../lib/api.js'
 import { useMasterData } from '../lib/masterData.jsx'
-import { ROLES, roleLabel } from '../lib/roles.js'
+import { APPROVE_LEVELS, ROLES, approveLevelLabel, roleLabel } from '../lib/roles.js'
 import { fmtDateTime } from '../lib/format.js'
 import './dashboard.css'
 
 const OPERATOR_TENANT = '0'
 
-const EMPTY = { username: '', name: '', password: '', role: 'operator', email: '', ternCode: OPERATOR_TENANT, active: true }
+const EMPTY = { username: '', name: '', password: '', role: 'operator', approveLevel: 0, email: '', ternCode: OPERATOR_TENANT, active: true }
 
 /**
  * Dashboard accounts, backed by PkAdminweb through /api/users.
@@ -85,6 +85,7 @@ export default function UserManagement() {
       name: values.name?.trim(),
       email: values.email?.trim() || null,
       role: values.role,
+      approveLevel: Number(values.approveLevel) || 0,
       ternCode: values.ternCode,
       active: values.active,
     }
@@ -170,6 +171,7 @@ export default function UserManagement() {
                 { key: 'name', label: 'Name', render: (r) => (<><strong>{r.name || r.username}</strong>{r.id === me?.adminId && <span className="pill ok" style={{ marginLeft: 8 }}>{t('You')}</span>}</>) },
                 { key: 'username', label: 'Username' },
                 { key: 'role', label: 'Role', render: (r) => <span className={`pill role-${r.role}`}>{t(roleLabel(r.role))}</span> },
+                { key: 'approveLevel', label: 'Member approval', render: (r) => (r.approveLevel ? <span className="pill visitor">{t(approveLevelLabel(r.approveLevel))}</span> : <span className="muted">{t('View only')}</span>) },
                 { key: 'tenantName', label: 'Tenant', render: (r) => r.tenantName || (r.ternCode && r.ternCode !== OPERATOR_TENANT ? r.ternCode : t('Whole property')) },
                 { key: 'email', label: 'Email', render: (r) => r.email || '—' },
                 { key: 'active', label: 'Status', render: (r) => <span className={`pill ${r.active ? 'ok' : 'inside'}`}>{t(r.active ? 'Active' : 'Disabled')}</span> },
@@ -267,6 +269,14 @@ function UserForm({ values, mode, error, tenants, onChange }) {
         <select className="select" value={values.role} onChange={(e) => onChange({ role: e.target.value })}>
           {ROLES.map((r) => <option key={r.value} value={r.value}>{t(r.label)}</option>)}
         </select>
+      </div>
+
+      <div className="field span-2">
+        <label>{t('Member approval')}</label>
+        <select className="select" value={values.approveLevel ?? 0} onChange={(e) => onChange({ approveLevel: Number(e.target.value) })}>
+          {APPROVE_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.value ? `${l.value} — ` : ''}{t(l.label)}</option>)}
+        </select>
+        <small className="muted">{t('approvelevel: 2 = CRM approves rights within the contract, 3 = high authority approves TEMP / Excel / outside the contract.')}</small>
       </div>
 
       <div className="field span-2">

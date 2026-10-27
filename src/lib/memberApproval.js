@@ -1,13 +1,17 @@
 /* =========================================================================
    Member request approval (อนุมัติคำขอเพิ่มสมาชิกจอดรถ).
 
-     tenant (ParkingStamp) submits → building admin grants the right and approves
-                                   → top authority approves (ผู้มีอำนาจสูงสุด)
-                                   → USERINFO / User_vehicle / PkCard are created
+     tenant (ParkingStamp) submits → CRM (approvelevel 2) grants the right and approves
+                                   → CIR within the contract ends here
+                                   → TEMP / Excel import / outside the contract goes on
+                                     to the high authority (approvelevel 3)
+                                   → USERINFO / User_vehicle / PkCard are written
 
-   Requests live in dbo.PkMemberRequest until the final approval. The building
-   admin picks the contract (Pkcar_contact) per vehicle type, the contract type,
-   fee, billing and dates — the tenant only asks for CIR or TEMP, without price.
+   Request types: ADD, EXCHANGE (a new person takes over an existing member's
+   right — the old member is retired) and DELETE (retire a member). Requests live
+   in dbo.PkMemberRequest until the last approval. CRM picks the contract
+   (Pkcar_contact) per vehicle type, the contract type, fee, billing and dates —
+   the tenant only asks for CIR or TEMP, without price. Other accounts view only.
 
    Endpoints (ParkingDashboardAPI):
      GET  /member-requests?keyword=&status=
@@ -15,11 +19,12 @@
      GET  /member-requests/{id}
      GET  /member-requests/{id}/contracts             the tenant's Pkcar_contact
      GET  /member-requests/{id}/vehicles/{vid}/image  registration copy
-     POST /member-requests/{id}/approve   { remark, grant }   grant at the building step
+     GET  /member-requests/{id}/license-image         driving licence copy
+     POST /member-requests/{id}/approve   { remark, grant }   grant at the CRM step
      POST /member-requests/{id}/reject    { remark }          remark required
 
    The server decides which step an approve belongs to from the request status
-   and the caller's role, and refuses one person approving both steps.
+   and the caller's approvelevel, and refuses one person approving both steps.
    ========================================================================= */
 
 import { api, toQuery } from './api.js'
@@ -33,8 +38,8 @@ export const STATUS = {
 }
 
 export const STATUS_META = {
-  [STATUS.PENDING_BUILDING]: { label: 'Awaiting building admin', pill: 'warn' },
-  [STATUS.PENDING_AUTHORITY]: { label: 'Awaiting top authority', pill: 'visitor' },
+  [STATUS.PENDING_BUILDING]: { label: 'Awaiting CRM', pill: 'warn' },
+  [STATUS.PENDING_AUTHORITY]: { label: 'Awaiting high authority', pill: 'visitor' },
   [STATUS.APPROVED]: { label: 'Approved', pill: 'ok' },
   [STATUS.REJECTED]: { label: 'Rejected', pill: 'danger' },
   [STATUS.CANCELLED]: { label: 'Cancelled by tenant', pill: '' },
@@ -44,8 +49,16 @@ export const STEP = { SUBMIT: 'SUBMIT', BUILDING: 'OPERATOR', AUTHORITY: 'AUTHOR
 
 export const STEP_LABEL = {
   [STEP.SUBMIT]: 'Tenant submitted',
-  [STEP.BUILDING]: 'Building admin',
-  [STEP.AUTHORITY]: 'Top authority',
+  [STEP.BUILDING]: 'CRM',
+  [STEP.AUTHORITY]: 'High authority',
+}
+
+export const TYPE = { ADD: 'ADD', EXCHANGE: 'EXCHANGE', DELETE: 'DELETE' }
+
+export const TYPE_META = {
+  [TYPE.ADD]: { label: 'Add member', pill: 'ok' },
+  [TYPE.EXCHANGE]: { label: 'Exchange member', pill: 'visitor' },
+  [TYPE.DELETE]: { label: 'Delete member', pill: 'danger' },
 }
 
 /** USERINFO.Cardcontact_Cartype — the contract types of the desktop program. */
@@ -75,14 +88,14 @@ export const STAGES = {
   building: {
     step: STEP.BUILDING,
     status: STATUS.PENDING_BUILDING,
-    title: 'Building Admin Approval',
-    sub: 'First check of member requests sent by tenants',
+    title: 'CRM Approval',
+    sub: 'CRM approves rights within the contract and proposes TEMP / special cases',
   },
   authority: {
     step: STEP.AUTHORITY,
     status: STATUS.PENDING_AUTHORITY,
-    title: 'Top Authority Approval',
-    sub: 'Final approval — the member is created on approve',
+    title: 'High Authority Approval',
+    sub: 'TEMP, Excel imports and requests outside the contract — applied on approve',
   },
 }
 
@@ -108,6 +121,7 @@ export const memberApprovalApi = {
   get: (id, signal) => api.get(`/member-requests/${id}`, { signal }),
   contracts: (id, signal) => api.get(`/member-requests/${id}/contracts`, { signal }),
   vehicleImage: (id, vehicleId, signal) => api.get(`/member-requests/${id}/vehicles/${vehicleId}/image`, { signal }),
+  licenseImage: (id, signal) => api.get(`/member-requests/${id}/license-image`, { signal }),
   approve: (id, { remark, grant }) => api.post(`/member-requests/${id}/approve`, { remark, grant }),
   reject: (id, { remark }) => api.post(`/member-requests/${id}/reject`, { remark }),
 }

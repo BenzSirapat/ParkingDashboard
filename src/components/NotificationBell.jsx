@@ -10,18 +10,18 @@ import { memberApprovalApi, MEMBER_REQUESTS_CHANGED, STATUS } from '../lib/membe
 const POLL_MS = 60_000
 
 const GROUPS = [
-  { status: STATUS.PENDING_BUILDING, label: 'Awaiting building admin', path: '/member-approval/building', count: 'pendingOperator', may: canApproveBuilding },
-  { status: STATUS.PENDING_AUTHORITY, label: 'Awaiting top authority', path: '/member-approval/authority', count: 'pendingAuthority', may: canApproveAuthority },
+  { status: STATUS.PENDING_BUILDING, label: 'Awaiting CRM', path: '/member-approval/building', count: 'pendingOperator', may: canApproveBuilding },
+  { status: STATUS.PENDING_AUTHORITY, label: 'Awaiting high authority', path: '/member-approval/authority', count: 'pendingAuthority', may: canApproveAuthority },
 ]
 
 /**
  * Top-bar bell: member requests waiting for approval, split by whose approval
- * they need. The badge counts only the steps the signed-in role can approve
- * (everything pending for a view-only role).
+ * they need. The badge counts only the step the signed-in approvelevel can
+ * approve (everything pending for a view-only account).
  */
 export default function NotificationBell() {
   const { t } = useLang()
-  const { role } = useAuth()
+  const { approveLevel } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [summary, setSummary] = useState(null)
@@ -63,7 +63,7 @@ export default function NotificationBell() {
     }
   }, [open])
 
-  const mine = GROUPS.filter((g) => g.may(role))
+  const mine = GROUPS.filter((g) => g.may(approveLevel))
   const badge = (mine.length ? mine : GROUPS).reduce((n, g) => n + (summary?.[g.count] ?? 0), 0)
   const total = GROUPS.reduce((n, g) => n + (summary?.[g.count] ?? 0), 0)
 
@@ -99,7 +99,7 @@ export default function NotificationBell() {
               <section key={g.status} className="notify-group">
                 <button className="notify-group-head" onClick={() => go(g.path)}>
                   <span>{t(g.label)}</span>
-                  <span className={`notify-count ${count && g.may(role) ? 'hot' : ''}`}>{fmtNum(count)}</span>
+                  <span className={`notify-count ${count && g.may(approveLevel) ? 'hot' : ''}`}>{fmtNum(count)}</span>
                 </button>
                 {items.length === 0 && <div className="notify-empty muted">{t('Nothing waiting.')}</div>}
                 {items.map((r) => (
