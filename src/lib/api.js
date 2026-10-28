@@ -140,6 +140,8 @@ export const authApi = {
   me: (signal) => api.get('/auth/me', { signal }),
   changePassword: (oldPassword, newPassword) =>
     api.post('/auth/change-password', { oldPassword, newPassword }),
+  /** Sets the signed-in account's own e-mail; answers with the refreshed profile. */
+  updateEmail: (email) => api.post('/auth/email', { email }),
 }
 
 export const masterApi = {

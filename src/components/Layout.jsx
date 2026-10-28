@@ -8,6 +8,7 @@ import { IconLogout, IconSun, IconMoon, IconCar, IconMenu } from './icons.jsx'
 import { LangFlag } from './flags.jsx'
 import ClockBar from './ClockBar.jsx'
 import NotificationBell from './NotificationBell.jsx'
+import AccountDialog from './AccountDialog.jsx'
 import { useSite } from '../lib/siteContext.jsx'
 import { roleLabel } from '../lib/roles.js'
 import './layout.css'
@@ -19,6 +20,7 @@ export default function Layout() {
   const { site, environment } = useSite()
   const location = useLocation()
   const [open, setOpen] = useState(false) // mobile drawer
+  const [accountOpen, setAccountOpen] = useState(false)
 
   const current = ALL_NAV.find((n) => location.pathname.startsWith(n.to))
   const groups = NAV_GROUPS.filter((g) => !g.adminOnly || canAdmin)
@@ -81,13 +83,19 @@ export default function Layout() {
             <button className="icon-btn" onClick={toggle} title={t('Toggle theme')} aria-label={t('Toggle theme')}>
               {theme === 'light' ? <IconMoon /> : <IconSun />}
             </button>
-            <div className="user-chip">
+            <button
+              type="button"
+              className="user-chip"
+              onClick={() => setAccountOpen(true)}
+              title={t('My account')}
+              aria-label={t('My account')}
+            >
               <span className="avatar">{user?.name?.[0] ?? 'A'}</span>
               <span className="user-meta">
                 <strong>{user?.name}</strong>
                 <small>{t(roleLabel(user?.role))}</small>
               </span>
-            </div>
+            </button>
             <button className="icon-btn" onClick={logout} title={t('Sign out')} aria-label={t('Sign out')}>
               <IconLogout />
             </button>
@@ -103,6 +111,8 @@ export default function Layout() {
           <span className="footer-links">{t('Terms & Conditions · Privacy & Policy')}</span>
         </footer>
       </div>
+
+      <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
     </div>
   )
 }

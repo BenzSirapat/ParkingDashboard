@@ -3,6 +3,7 @@ import { useAuth } from './auth/AuthContext.jsx'
 import Layout from './components/Layout.jsx'
 import Login from './pages/Login.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
+import RequireEmail from './pages/RequireEmail.jsx'
 
 import SalesDashboard from './pages/SalesDashboard.jsx'
 import TransactionDashboard from './pages/TransactionDashboard.jsx'
@@ -28,9 +29,10 @@ import PackageMemberReport from './pages/reports/PackageMemberReport.jsx'
 import CashOnlineReport from './pages/reports/CashOnlineReport.jsx'
 
 function RequireAuth({ children }) {
-  const { user } = useAuth()
+  const { user, needsEmail } = useAuth()
   const location = useLocation()
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />
+  if (needsEmail) return <RequireEmail />
   return children
 }
 

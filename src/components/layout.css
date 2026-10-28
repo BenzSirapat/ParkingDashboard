@@ -202,7 +202,10 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface);
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: border-color .15s;
 }
+.user-chip:hover { border-color: var(--brand); }
 .avatar {
   display: grid; place-items: center;
   width: 32px; height: 32px; border-radius: 50%;

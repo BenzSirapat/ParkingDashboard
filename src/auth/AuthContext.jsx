@@ -68,6 +68,15 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  const updateEmail = useCallback(async (email) => {
+    try {
+      setUser(await authApi.updateEmail(email))
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof ApiError ? err.message : 'Could not save the e-mail.' }
+    }
+  }, [])
+
   const value = useMemo(() => ({
     user,
     restoring,
@@ -75,6 +84,9 @@ export function AuthProvider({ children }) {
     logout: signOut,
     refresh,
     changePassword,
+    updateEmail,
+    /** Every dashboard account must have an e-mail before the dashboard opens. */
+    needsEmail: !!user && !user.email?.trim(),
     role: user?.role ?? null,
     /** PkAdminsystem.approvelevel: 2 = CRM, 3 = high authority, otherwise view only. */
     approveLevel: user?.approveLevel ?? 0,
@@ -84,7 +96,7 @@ export function AuthProvider({ children }) {
     canAdmin: canAdmin(user?.role),
     /** Tenant accounts only ever see their own transactions — the API enforces it. */
     isTenantScoped: !!user?.isTenantScoped,
-  }), [user, restoring, login, signOut, refresh, changePassword])
+  }), [user, restoring, login, signOut, refresh, changePassword, updateEmail])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
