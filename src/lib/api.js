@@ -111,8 +111,12 @@ async function request(path, { method = 'GET', body, signal, raw = false } = {})
   try { payload = await res.json() } catch { /* empty or non-JSON body */ }
 
   if (!res.ok || payload?.success === false) {
+    // ASP.NET model validation answers with ProblemDetails: { title, errors: { field: [msg] } }
+    const validation = payload?.errors && typeof payload.errors === 'object'
+      ? Object.values(payload.errors).flat().join(' ')
+      : ''
     throw new ApiError(
-      payload?.message || payload?.error || `Request failed (${res.status})`,
+      payload?.message || payload?.error || validation || payload?.title || `Request failed (${res.status})`,
       { status: res.status, body: payload }
     )
   }

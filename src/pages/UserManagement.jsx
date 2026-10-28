@@ -87,7 +87,6 @@ export default function UserManagement() {
       role: values.role,
       approveLevel: Number(values.approveLevel) || 0,
       ternCode: values.ternCode,
-      active: values.active,
     }
     if (values.password) payload.password = values.password
 
@@ -107,12 +106,6 @@ export default function UserManagement() {
     setConfirm(null)
     await run(() => usersApi.remove(target.id), `${t('User deleted')} · ${target.username}`)
   }
-
-  const toggleActive = (u) =>
-    run(
-      () => usersApi.update(u.id, { active: !u.active }),
-      `${u.username} · ${t(u.active ? 'Disabled' : 'Enabled')}`
-    )
 
   if (!canAdmin) {
     return (
@@ -183,7 +176,6 @@ export default function UserManagement() {
                   render: (r) => (
                     <div className="row-actions">
                       <button className="btn tiny" onClick={() => openEdit(r)} disabled={busy}>{t('Edit')}</button>
-                      <button className="btn tiny" onClick={() => toggleActive(r)} disabled={busy}>{t(r.active ? 'Disable' : 'Enable')}</button>
                       <button
                         className="btn tiny danger"
                         onClick={() => setConfirm(r)}
@@ -206,7 +198,7 @@ export default function UserManagement() {
         title={editing?.mode === 'create' ? 'Add user' : 'Edit user'}
         sub={editing?.mode === 'edit' ? 'Leave the password blank to keep the current one' : 'Create a new dashboard account'}
         onClose={() => { if (!busy) { setEditing(null); setError('') } }}
-        width={620}
+        width={860}
         footer={
           <>
             <button className="btn" onClick={() => { setEditing(null); setError('') }} disabled={busy}>{t('Cancel')}</button>
@@ -282,22 +274,16 @@ function UserForm({ values, mode, error, tenants, onChange }) {
       <div className="field span-2">
         <label>{t('Email')}</label>
         <input className="input" type="email" value={values.email ?? ''} onChange={(e) => onChange({ email: e.target.value })} />
+        <small className="muted">{t('CRM and high authority accounts get an e-mail here when a member request waits for them.')}</small>
       </div>
 
-      <div className="field">
+      <div className="field span-2">
         <label>{t('Tenant')}</label>
         <select className="select" value={values.ternCode ?? OPERATOR_TENANT} onChange={(e) => onChange({ ternCode: e.target.value })}>
           <option value={OPERATOR_TENANT}>{t('Whole property (operator)')}</option>
           {tenants.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <small className="muted">{t('A tenant account only ever sees its own transactions.')}</small>
-      </div>
-      <div className="field">
-        <label>{t('Status')}</label>
-        <label className="check-row">
-          <input type="checkbox" checked={values.active !== false} onChange={(e) => onChange({ active: e.target.checked })} />
-          <span>{t('Account is active (can sign in)')}</span>
-        </label>
       </div>
     </div>
   )

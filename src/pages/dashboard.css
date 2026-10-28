@@ -270,8 +270,12 @@ table.data tbody tr.clickable { cursor: pointer; }
 }
 
 /* ---- Forms inside modals ---- */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* minmax(0, 1fr): a plain 1fr track grows to its widest select option and
+   pushes the dialog into a horizontal scroll */
+.form-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 .form-grid .span-2 { grid-column: span 2; }
+.form-grid .field { min-width: 0; }
+.form-grid .input, .form-grid .select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 @media (max-width: 620px) { .form-grid { grid-template-columns: 1fr; } .form-grid .span-2 { grid-column: span 1; } }
 .check-row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-2); padding-top: 9px; }
 .check-row input { width: 16px; height: 16px; accent-color: var(--brand); }

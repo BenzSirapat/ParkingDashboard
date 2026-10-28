@@ -784,6 +784,8 @@ const TH = {
   'Imported from Excel — after CRM this goes on to the high authority.': 'คำขอนำเข้าจาก Excel — หลัง CRM อนุมัติจะส่งต่อให้ผู้บริหาร',
   'TEMP / outside the contract — after CRM this goes on to the high authority.': 'สิทธิ์ TEMP / นอกเหนือสัญญา — หลัง CRM อนุมัติจะส่งต่อให้ผู้บริหาร',
   'Driving licence copy': 'สำเนาใบขับขี่',
+  'CRM and high authority accounts get an e-mail here when a member request waits for them.':
+    'บัญชี CRM และผู้บริหาร จะได้รับอีเมลแจ้งเตือนที่อีเมลนี้เมื่อมีคำขอสมาชิกรออนุมัติ',
   'No car contract was granted at the CRM step.': 'ขั้น CRM ยังไม่ได้กำหนดสัญญารถยนต์',
   'No motorcycle contract was granted at the CRM step.': 'ขั้น CRM ยังไม่ได้กำหนดสัญญารถจักรยานยนต์',
   'The request does not name the member to replace.': 'คำขอนี้ไม่ได้ระบุสมาชิกคนเดิม',
