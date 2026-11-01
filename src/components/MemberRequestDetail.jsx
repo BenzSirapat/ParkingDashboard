@@ -6,7 +6,7 @@ import { useLang } from '../lib/i18n.jsx'
 import { useApi } from '../lib/useApi.js'
 import { fmtBaht, fmtDate, fmtDateTime } from '../lib/format.js'
 import {
-  memberApprovalApi, fullName, stepRecord, vehiclesOf, contactTypeLabel,
+  memberApprovalApi, fullName, stepRecord, vehiclesOf, contactTypeLabel, serverToday,
   BILLING, CONTACT_TYPES, RIGHT_LABEL, STATUS, STATUS_META, STEP, STEP_LABEL, TYPE, TYPE_META,
 } from '../lib/memberApproval.js'
 
@@ -101,7 +101,7 @@ const contractLabel = (c) =>
  * The defaults the grant form starts from: the request's own values, then (for an
  * exchange) the old member's contract, else the first matching contract.
  */
-function initialGrant(req, contracts) {
+function initialGrant(req, contracts, today) {
   const pick = (typeCar, id) => {
     const own = contracts.filter((c) => c.typeCar === typeCar)
     return own.find((c) => c.id === id) ?? own.find((c) => c.right === req.requestedRight) ?? own[0] ?? null
@@ -116,15 +116,17 @@ function initialGrant(req, contracts) {
     motorContactType: req.grant?.motorContactType ?? motor?.defaultContactType ?? 0,
     motorMemberFee: req.grant?.motorMemberFee ?? motor?.pricePerCar ?? 0,
     billingType: req.grant?.billingType ?? 1,
-    startDate: ymd(req.startDate),
+    // The usage cannot start before the approval day.
+    startDate: ymd(req.startDate) && ymd(req.startDate) < today ? today : ymd(req.startDate),
     expireDate: ymd(req.expireDate),
   }
 }
 
 /**
  * True when the grant is a TEMP / rent contract or goes over the contract's
- * vehicle count — the server then sends it on to the high authority. An exchange
- * on the old member's own contract frees that member's place, so it is not over.
+ * count — the server then sends it on to the high authority. 1 person = 1 right:
+ * the member's 1-3 vehicles take one place. An exchange on the old member's own
+ * contract frees that member's place, so it is not over.
  */
 function outsideContract(req, grant, list) {
   if (!grant) return false
@@ -134,7 +136,7 @@ function outsideContract(req, grant, list) {
     if (!c) return false
     if (c.right === 'TEMP' || grant[typeKey] === 0) return true
     const freed = req.requestType === TYPE.EXCHANGE && targetId === c.id ? 1 : 0
-    return c.amount != null && c.used - freed + count > c.amount
+    return c.amount != null && c.used - freed + 1 > c.amount
   }
   return over('C', 'carContactId', 'carContactType', req.member?.cars?.length || 0, req.target?.carContactId)
     || over('M', 'motorContactId', 'motorContactType', req.member?.motorcycles?.length || 0, req.target?.motorContactId)
@@ -144,13 +146,13 @@ function outsideContract(req, grant, list) {
  * CRM step: which of the tenant's contracts each vehicle type gets, the
  * contract type, fee, billing and the usage dates.
  */
-function GrantForm({ req, grant, onChange, onOutside }) {
+function GrantForm({ req, grant, today, onChange, onOutside }) {
   const { t } = useLang()
   const contracts = useApi((signal) => memberApprovalApi.contracts(req.requestId, signal), [req.requestId])
   const list = contracts.data ?? []
 
   useEffect(() => {
-    if (contracts.data) onChange(initialGrant(req, contracts.data))
+    if (contracts.data) onChange(initialGrant(req, contracts.data, today))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contracts.data])
 
@@ -170,16 +172,16 @@ function GrantForm({ req, grant, onChange, onOutside }) {
   const block = (typeCar, label, count, key, typeKey, feeKey) => {
     const options = list.filter((c) => c.typeCar === typeCar)
     const chosen = options.find((c) => c.id === grant[key])
-    const over = chosen?.amount != null && chosen.used + count > chosen.amount
+    const over = chosen?.amount != null && chosen.used + 1 > chosen.amount
     return (
       <>
         <div className="field span-2">
-          <label>{t(label)} ({count} {t('vehicle(s)')})</label>
+          <label>{t(label)} ({count} {t('vehicle(s)')} · 1 {t('right')})</label>
           <select className="select" value={grant[key]} onChange={pickContract(key, typeKey, feeKey)}>
             <option value="">{t(options.length ? '— choose a contract —' : 'This tenant has no contract for this vehicle type')}</option>
             {options.map((c) => <option key={c.id} value={c.id}>{contractLabel(c)}</option>)}
           </select>
-          {over && <small className="ma-warn">{t('This contract is already at its vehicle limit — the request goes on to the high authority.')}</small>}
+          {over && <small className="ma-warn">{t('This contract is already at its limit — the request goes on to the high authority.')}</small>}
         </div>
         <div className="field">
           <label>{t('Contract type')}</label>
@@ -230,7 +232,13 @@ function GrantForm({ req, grant, onChange, onOutside }) {
         </div>
         <div className="field">
           <label>{t('Start date')}</label>
-          <input className="input" type="date" value={grant.startDate} onChange={(e) => set({ startDate: e.target.value })} />
+          <input className="input" type="date" min={today} value={grant.startDate} onChange={(e) => set({ startDate: e.target.value })} />
+          {ymd(req.startDate) && grant.startDate !== ymd(req.startDate) && (
+            <small className="ma-warn">
+              {t('Requested')} {fmtDay(req.startDate)}
+              {ymd(req.startDate) < today ? ` — ${t('already passed, moved to the approval date')}` : ''}
+            </small>
+          )}
         </div>
         <div className="field">
           <label>{t('Expiry date')}</label>
@@ -247,11 +255,12 @@ function GrantForm({ req, grant, onChange, onOutside }) {
   )
 }
 
-function grantError(req, grant) {
+function grantError(req, grant, today) {
   if (!grant) return 'Choose the parking right to grant.'
   if (req.member?.cars?.length && !grant.carContactId) return 'Choose the car contract.'
   if (req.member?.motorcycles?.length && !grant.motorContactId) return 'Choose the motorcycle contract.'
   if (!grant.startDate || !grant.expireDate) return 'Choose the usage dates.'
+  if (grant.startDate < today) return 'The start date cannot be before the approval date.'
   if (grant.expireDate < grant.startDate) return 'The expiry date cannot be before the start date.'
   return null
 }
@@ -282,7 +291,7 @@ function VehicleImage({ requestId, vehicle, onClose }) {
  * One member request, with approve / reject when it is waiting on `stage` and
  * the signed-in user may act on that step.
  */
-export default function MemberRequestDetail({ requestId, stage, canAct, onClose, onActed }) {
+export default function MemberRequestDetail({ requestId, stage, canAct, lock, onClose, onActed }) {
   const { t } = useLang()
   const query = useApi(
     (signal) => memberApprovalApi.get(requestId, signal),
@@ -304,8 +313,12 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
   }, [requestId])
 
   const actionable = canAct && req?.status === stage.status
+  const locked = !!lock?.locked
+  const today = serverToday(lock)
   const isDelete = req?.requestType === TYPE.DELETE
   const granting = actionable && stage.step === STEP.BUILDING && !isDelete
+  // The high authority step: a start date that has already passed moves to the approval day.
+  const startMoves = actionable && !granting && !isDelete && !!ymd(req?.startDate) && ymd(req.startDate) < today
   // The approve that applies the request: high authority always, CRM when the
   // right stays within the contract.
   const isFinal = stage.step === STEP.AUTHORITY || (!req?.requiresAuthority && !(granting && outside))
@@ -319,7 +332,7 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
   const ask = (action) => {
     if (action === 'REJECT' && needsReason) { setError(t('A reason is required to reject.')); return }
     if (action === 'APPROVE' && granting) {
-      const problem = grantError(req, grant)
+      const problem = grantError(req, grant, today)
       if (problem) { setError(t(problem)); return }
     }
     setError(null)
@@ -387,7 +400,12 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
             {actionable && (
               <>
                 <button className="btn danger" onClick={() => ask('REJECT')} disabled={busy}>{t('Reject')}</button>
-                <button className="btn primary" onClick={() => ask('APPROVE')} disabled={busy}>
+                <button
+                  className="btn primary"
+                  onClick={() => ask('APPROVE')}
+                  disabled={busy || locked}
+                  title={locked ? t('Approvals are locked for the accounting cut-off') : undefined}
+                >
                   {t(isFinal ? 'Final approve' : 'Approve and send to the high authority')}
                 </button>
               </>
@@ -415,6 +433,17 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
             </ol>
 
             {error && <div className="banner danger">{error}</div>}
+
+            {actionable && locked && (
+              <div className="banner danger">
+                {t('Approvals are locked for the accounting cut-off')} — {t('approving reopens on')} {fmtDateTime(lock.unlockAt)}.
+              </div>
+            )}
+            {startMoves && (
+              <div className="banner warn">
+                {t('The start date')} {fmtDay(req.startDate)} {t('has already passed — on approval it moves to')} {fmtDay(today)}.
+              </div>
+            )}
 
             {!actionable && (() => {
               const [tone, text] = statusBanner()
@@ -448,16 +477,30 @@ export default function MemberRequestDetail({ requestId, stage, canAct, onClose,
             <TargetInfo req={req} />
 
             {granting
-              ? <GrantForm req={req} grant={grant} onChange={setGrant} onOutside={setOutside} />
+              ? <GrantForm req={req} grant={grant} today={today} onChange={setGrant} onOutside={setOutside} />
               : <GrantInfo req={req} />}
 
             {!isDelete && <section className="ma-section">
               <h4>{t('Vehicles')} ({vehicles.length})</h4>
+              {vehicles.length > 1 && (
+                <p className="muted ma-hint">
+                  {t('One person, one parking right — the main vehicle goes on the member record, the others are spares with their own cards.')}
+                </p>
+              )}
               <DataTable
                 rows={vehicles.map((v, i) => ({ ...v, _key: `${v.type}-${v.licensePlate}-${i}` }))}
                 columns={[
                   { key: 'type', label: 'Type', render: (r) => t(r.type) },
-                  { key: 'licensePlate', label: 'License Plate', render: (r) => <strong>{r.licensePlate}</strong> },
+                  {
+                    key: 'licensePlate',
+                    label: 'License Plate',
+                    render: (r) => (
+                      <>
+                        <strong>{r.licensePlate}</strong>
+                        {r.isMain && vehicles.length > 1 && <span className="pill ok ma-main">{t('Main')}</span>}
+                      </>
+                    ),
+                  },
                   { key: 'province', label: 'Province', render: (r) => r.province || '—' },
                   { key: 'brand', label: 'Brand', render: (r) => r.brand || '—' },
                   { key: 'color', label: 'Colour', render: (r) => r.color || '—' },

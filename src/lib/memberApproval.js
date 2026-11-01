@@ -22,6 +22,14 @@
      GET  /member-requests/{id}/license-image         driving licence copy
      POST /member-requests/{id}/approve   { remark, grant }   grant at the CRM step
      POST /member-requests/{id}/reject    { remark }          remark required
+     GET  /member-requests/approval-lock              accounting cut-off lock + locked now
+     PUT  /member-requests/approval-lock              change it (administrators)
+
+   Approval lock: during the accounting cut-off at the start of each month
+   (default day 1 00:00 – day 3 23:59) nobody can approve; tenants keep
+   submitting and the requests wait. A start date already in the past on the
+   approval day moves to the approval date (the server does it and notes it in
+   the history).
 
    The server decides which step an approve belongs to from the request status
    and the caller's approvelevel, and refuses one person approving both steps.
@@ -124,6 +132,16 @@ export const memberApprovalApi = {
   licenseImage: (id, signal) => api.get(`/member-requests/${id}/license-image`, { signal }),
   approve: (id, { remark, grant }) => api.post(`/member-requests/${id}/approve`, { remark, grant }),
   reject: (id, { remark }) => api.post(`/member-requests/${id}/reject`, { remark }),
+  approvalLock: (signal) => api.get('/member-requests/approval-lock', { signal }),
+  saveApprovalLock: (body) => api.put('/member-requests/approval-lock', body),
+}
+
+/** yyyy-mm-dd of the server clock the lock endpoint returns (falls back to the browser). */
+export const serverToday = (lock) => {
+  const v = lock?.serverNow
+  if (v) return String(v).slice(0, 10)
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 /**

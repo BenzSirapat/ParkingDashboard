@@ -74,3 +74,6 @@
 
 .ma-remark { resize: vertical; min-height: 70px; font-family: inherit; }
 .modal-body > .field { margin-top: 18px; }
+
+/* Main vehicle of a member (1 person may register up to 3 vehicles). */
+.ma-main { margin-left: 6px; font-size: 11px; vertical-align: middle; }

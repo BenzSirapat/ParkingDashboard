@@ -4,6 +4,7 @@ import { Panel, DataTable } from '../components/ui.jsx'
 import StatCard from '../components/StatCard.jsx'
 import { AsyncState } from '../components/AsyncState.jsx'
 import MemberRequestDetail from '../components/MemberRequestDetail.jsx'
+import { ApprovalLockBanner, ApprovalLockSettings } from '../components/ApprovalLock.jsx'
 import { IconClock, IconUsers, IconWarning, IconSearch, IconDoc } from '../components/icons.jsx'
 import { useLang } from '../lib/i18n.jsx'
 import { useAuth } from '../auth/AuthContext.jsx'
@@ -31,7 +32,7 @@ const TAB_ALL = 'all'
  */
 export default function MemberApproval({ stage: stageKey }) {
   const { t } = useLang()
-  const { approveLevel } = useAuth()
+  const { approveLevel, canAdmin } = useAuth()
   const stage = STAGES[stageKey]
   const canAct = stageKey === 'authority' ? canApproveAuthority(approveLevel) : canApproveBuilding(approveLevel)
 
@@ -59,6 +60,10 @@ export default function MemberApproval({ stage: stageKey }) {
   }, [params, setParams])
 
   const list = useApi((signal) => memberApprovalApi.list({ keyword: term }, signal), [term])
+  // Accounting cut-off lock — re-read when a request opens so the state is current.
+  const approvalLock = useApi((signal) => memberApprovalApi.approvalLock(signal), [stageKey, openId])
+  const lock = approvalLock.data ?? null
+  const [editLock, setEditLock] = useState(false)
   const counts = list.data?.counts ?? {}
   const otherStatus = stage.status === STATUS.PENDING_BUILDING ? STATUS.PENDING_AUTHORITY : STATUS.PENDING_BUILDING
 
@@ -105,6 +110,8 @@ export default function MemberApproval({ stage: stageKey }) {
           {flash.req.customerCode ? ` · ${t('Customer code')} ${flash.req.customerCode}` : ''}
         </div>
       )}
+
+      <ApprovalLockBanner lock={lock} canEdit={canAdmin} onEdit={() => setEditLock(true)} />
 
       {!canAct && (
         <div className="banner warn">
@@ -210,8 +217,16 @@ export default function MemberApproval({ stage: stageKey }) {
         requestId={openId}
         stage={stage}
         canAct={canAct}
+        lock={lock}
         onClose={() => setOpenId(null)}
         onActed={acted}
+      />
+
+      <ApprovalLockSettings
+        open={editLock}
+        lock={lock}
+        onClose={() => setEditLock(false)}
+        onSaved={() => { setEditLock(false); approvalLock.reload() }}
       />
     </>
   )
