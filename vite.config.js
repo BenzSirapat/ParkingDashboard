@@ -9,6 +9,25 @@ function normalizeBase(value) {
   return `/${raw.replace(/^\/+|\/+$/g, '')}/`
 }
 
+// Serve "/dashboard" (no trailing slash, with or without ?query / #hash) as
+// "/dashboard/" so the app opens either way — Vite answers 404 to the bare base
+// otherwise. The URL in the address bar is left as typed; the router accepts both.
+function baseWithoutSlash(base) {
+  const bare = base.length > 1 && base.startsWith('/') ? base.slice(0, -1) : null
+  const rewrite = (req, _res, next) => {
+    if (bare && req.url) {
+      const [path, query = ''] = req.url.split(/(?=\?)/)
+      if (path === bare) req.url = base + query
+    }
+    next()
+  }
+  return {
+    name: 'base-without-trailing-slash',
+    configureServer(server) { server.middlewares.use(rewrite) },
+    configurePreviewServer(server) { server.middlewares.use(rewrite) },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // VITE_BASE = homepage path the app is served from (e.g. /dashboard/)
@@ -17,7 +36,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
-    plugins: [react()],
+    plugins: [baseWithoutSlash(base), react()],
     server: {
       port: 5173,
       open: true,

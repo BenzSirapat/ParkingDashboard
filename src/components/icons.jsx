@@ -40,4 +40,6 @@ export const IconInbox = I(<><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5
 export const IconSearch = I(<><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></>)
 export const IconPrinter = I(<><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></>)
 export const IconDownload = I(<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></>)
+export const IconShield = I(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></>)
+export const IconUpload = I(<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></>)
 export const IconFile = I(<><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/></>)

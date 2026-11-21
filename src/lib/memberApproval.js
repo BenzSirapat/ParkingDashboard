@@ -61,12 +61,13 @@ export const STEP_LABEL = {
   [STEP.AUTHORITY]: 'High authority',
 }
 
-export const TYPE = { ADD: 'ADD', EXCHANGE: 'EXCHANGE', DELETE: 'DELETE' }
+export const TYPE = { ADD: 'ADD', EXCHANGE: 'EXCHANGE', DELETE: 'DELETE', UPDATE: 'UPDATE' }
 
 export const TYPE_META = {
   [TYPE.ADD]: { label: 'Add member', pill: 'ok' },
   [TYPE.EXCHANGE]: { label: 'Exchange member', pill: 'visitor' },
   [TYPE.DELETE]: { label: 'Delete member', pill: 'danger' },
+  [TYPE.UPDATE]: { label: 'Change member', pill: 'warn' },
 }
 
 /** USERINFO.Cardcontact_Cartype — the contract types of the desktop program. */
@@ -82,7 +83,8 @@ export const contactTypeLabel = (v) => CONTACT_TYPES.find((c) => c.value === v)?
 
 export const BILLING = [
   { value: 1, label: 'Company' },
-  { value: 2, label: 'Personal' },
+  { value: 2, label: 'Employee' },
+  { value: 3, label: 'Third party' },
 ]
 
 /** CIR = free with the lease, TEMP = rented on top (paid). */

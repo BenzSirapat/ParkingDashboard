@@ -1,9 +1,14 @@
 import {
   IconChartBar, IconArrowIn, IconTag, IconCar, IconWarning,
-  IconReceipt, IconDoc, IconGlobe, IconUsers, IconWallet, IconUser, IconBuilding,
+  IconReceipt, IconDoc, IconGlobe, IconUsers, IconWallet, IconUser, IconBuilding, IconShield, IconUpload,
 } from './components/icons.jsx'
 
 // Dashboards (grid marker) + Reports (dot marker) + Administration (admin only).
+//
+// Every item's `to` is also its permission key: administrators switch menus on and
+// off per permission group (Administration → Permissions) and per user. The API
+// keeps the same list in ParkingDashboardAPI/Security/DashboardMenus.cs — add a new
+// page to both.
 export const NAV_GROUPS = [
   {
     label: 'Dashboards',
@@ -42,6 +47,8 @@ export const NAV_GROUPS = [
     label: 'Member Approval',
     kind: 'report',
     items: [
+      // CRM uploads the Excel the tenant filled in (add / change / cancel).
+      { to: '/member-import', label: 'Member Import (Excel)', icon: IconUpload },
       { to: '/member-approval/building', label: 'CRM Approval', icon: IconBuilding },
       { to: '/member-approval/authority', label: 'High Authority Approval', icon: IconUser },
     ],
@@ -53,8 +60,27 @@ export const NAV_GROUPS = [
     adminOnly: true,
     items: [
       { to: '/users', label: 'User Management', icon: IconUser },
+      { to: '/permissions', label: 'Permissions', icon: IconShield },
     ],
   },
 ]
 
 export const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items)
+
+/**
+ * The menus a signed-in account may open. The API sends `menus` on the profile
+ * (administrators get every menu). An older API without the field → the menus as
+ * before: everything but administration, which needs the admin role.
+ */
+export function allowedMenus(user, isAdmin) {
+  if (isAdmin) return new Set(ALL_NAV.map((n) => n.to))
+  if (Array.isArray(user?.menus)) return new Set(user.menus)
+  return new Set(NAV_GROUPS.filter((g) => !g.adminOnly).flatMap((g) => g.items.map((i) => i.to)))
+}
+
+/** The nav groups with only the items this account may open (empty groups dropped). */
+export function visibleGroups(allowed) {
+  return NAV_GROUPS
+    .map((g) => ({ ...g, items: g.items.filter((i) => allowed.has(i.to)) }))
+    .filter((g) => g.items.length > 0)
+}

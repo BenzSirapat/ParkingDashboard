@@ -6,6 +6,7 @@ import { useSite } from '../lib/siteContext.jsx'
 import { IconCar } from '../components/icons.jsx'
 import { LangFlag } from '../components/flags.jsx'
 import ParkingHeroArt from '../components/ParkingHeroArt.jsx'
+import ForgotPassword from './ForgotPassword.jsx'
 import './login.css'
 
 export default function Login() {
@@ -17,6 +18,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [forgot, setForgot] = useState(false)
 
   async function onSubmit(e) {
     e.preventDefault()
@@ -26,6 +28,19 @@ export default function Login() {
     setLoading(false)
     if (res.ok) navigate('/', { replace: true })
     else setError(res.error)
+  }
+
+  /** The password was reset through the e-mailed OTP — carry on signing in with it. */
+  async function onResetCompleted(name, newPassword) {
+    const res = await login(name, newPassword)
+    if (res.ok) {
+      navigate('/', { replace: true })
+      return
+    }
+    setForgot(false)
+    setUsername(name)
+    setPassword('')
+    setError(res.error)
   }
 
   return (
@@ -46,6 +61,13 @@ export default function Login() {
         <button type="button" className="login-lang" onClick={toggleLang}>
           <LangFlag lang={lang} /> {lang === 'en' ? 'EN' : 'ไทย'}
         </button>
+        {forgot ? (
+          <ForgotPassword
+            initialUsername={username.trim()}
+            onCancel={() => setForgot(false)}
+            onCompleted={onResetCompleted}
+          />
+        ) : (
         <form className="login-card" onSubmit={onSubmit}>
           <h1>{t('Sign in')}</h1>
           <p className="login-lead">{t('Please sign in to access the dashboard.')}</p>
@@ -73,6 +95,9 @@ export default function Login() {
               autoComplete="current-password"
               placeholder="••••••••"
             />
+            <button type="button" className="login-link login-forgot" onClick={() => { setError(''); setForgot(true) }}>
+              {t('Forgot password?')}
+            </button>
           </div>
 
           {error && <div className="login-error">{t(error)}</div>}
@@ -85,6 +110,7 @@ export default function Login() {
             {t('Sign in with your parking system account.')}
           </div>
         </form>
+        )}
       </div>
     </div>
   )

@@ -105,6 +105,32 @@
   color: var(--ink-2);
 }
 
+/* ---- Forgot password ---- */
+.login-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.login-link:hover:not(:disabled) { text-decoration: underline; }
+.login-link:disabled { color: var(--ink-muted); cursor: default; }
+.login-forgot { align-self: flex-end; margin-top: 2px; }
+.login-back { align-self: center; margin-top: 2px; }
+.login-links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.login-info {
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  color: var(--ink-2);
+  font-size: 13.5px;
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
+}
+.login-otp { font-size: 22px; letter-spacing: .35em; text-align: center; font-variant-numeric: tabular-nums; }
+
 @media (max-width: 820px) {
   .login-page { grid-template-columns: 1fr; }
   .login-hero { display: none; }

@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useTheme } from '../lib/useTheme.js'
 import { useLang } from '../lib/i18n.jsx'
-import { NAV_GROUPS, ALL_NAV } from '../nav.js'
+import { ALL_NAV, visibleGroups } from '../nav.js'
 import { IconLogout, IconSun, IconMoon, IconCar, IconMenu } from './icons.jsx'
 import { LangFlag } from './flags.jsx'
 import ClockBar from './ClockBar.jsx'
@@ -14,7 +14,7 @@ import { roleLabel } from '../lib/roles.js'
 import './layout.css'
 
 export default function Layout() {
-  const { user, logout, canAdmin } = useAuth()
+  const { user, logout, menus } = useAuth()
   const { theme, toggle } = useTheme()
   const { t, lang, toggle: toggleLang } = useLang()
   const { site, environment } = useSite()
@@ -23,7 +23,7 @@ export default function Layout() {
   const [accountOpen, setAccountOpen] = useState(false)
 
   const current = ALL_NAV.find((n) => location.pathname.startsWith(n.to))
-  const groups = NAV_GROUPS.filter((g) => !g.adminOnly || canAdmin)
+  const groups = visibleGroups(menus)
 
   return (
     <div className={`shell ${open ? 'nav-open' : ''}`}>

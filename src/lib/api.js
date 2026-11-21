@@ -142,6 +142,11 @@ export const authApi = {
     api.post('/auth/change-password', { oldPassword, newPassword }),
   /** Sets the signed-in account's own e-mail; answers with the refreshed profile. */
   updateEmail: (email) => api.post('/auth/email', { email }),
+  /** Forgot password: e-mails an 8-digit OTP, checks it, then sets the new password. */
+  forgotPassword: (username) => api.post('/auth/forgot-password', { username }),
+  verifyResetCode: (username, code) => api.post('/auth/forgot-password/verify', { username, code }),
+  resetPassword: (username, resetToken, newPassword) =>
+    api.post('/auth/reset-password', { username, resetToken, newPassword }),
 }
 
 export const masterApi = {
@@ -192,6 +197,21 @@ export const reportsApi = {
     a.remove()
     URL.revokeObjectURL(url)
   },
+}
+
+/** Permission groups: which menus each group may open (Administration → Permissions). */
+export const permissionsApi = {
+  overview: (signal) => api.get('/permissions', { signal }),
+  createGroup: (body) => api.post('/permissions/groups', body),
+  updateGroup: (id, body) => api.put(`/permissions/groups/${id}`, body),
+  removeGroup: (id) => api.del(`/permissions/groups/${id}`),
+}
+
+/** CRM Excel import of members (add / change / cancel). */
+export const memberImportApi = {
+  preview: (body) => api.post('/member-import/preview', body),
+  commit: (body) => api.post('/member-import/commit', body),
+  batches: (signal) => api.get('/member-import/batches', { signal }),
 }
 
 export const usersApi = {

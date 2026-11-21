@@ -7,7 +7,8 @@ import { IconUsers, IconUser, IconSearch } from '../components/icons.jsx'
 import { useLang } from '../lib/i18n.jsx'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useApi } from '../lib/useApi.js'
-import { usersApi } from '../lib/api.js'
+import { usersApi, permissionsApi } from '../lib/api.js'
+import MenuPicker from '../components/MenuPicker.jsx'
 import { useMasterData } from '../lib/masterData.jsx'
 import { APPROVE_LEVELS, ROLES, approveLevelLabel, roleLabel } from '../lib/roles.js'
 import { fmtDateTime } from '../lib/format.js'
@@ -15,7 +16,10 @@ import './dashboard.css'
 
 const OPERATOR_TENANT = '0'
 
-const EMPTY = { username: '', name: '', password: '', role: 'operator', approveLevel: 0, email: '', ternCode: OPERATOR_TENANT, active: true }
+const EMPTY = {
+  username: '', name: '', password: '', role: 'operator', approveLevel: 0, email: '', ternCode: OPERATOR_TENANT, active: true,
+  permissionGroupId: 0, useCustomMenus: false, customMenus: [],
+}
 
 /**
  * Dashboard accounts, backed by PkAdminweb through /api/users.
@@ -29,6 +33,10 @@ export default function UserManagement() {
 
   const query = useApi((signal) => usersApi.list(signal), [], { enabled: canAdmin })
   const users = query.data ?? []
+  // Permission groups / menu catalogue (Administration → Permissions).
+  const perms = useApi((signal) => permissionsApi.overview(signal), [], { enabled: canAdmin })
+  const groups = perms.data?.groups ?? []
+  const groupName = (id) => groups.find((g) => g.id === id)?.name
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -58,7 +66,17 @@ export default function UserManagement() {
   const openCreate = () => { setError(''); setEditing({ mode: 'create', values: { ...EMPTY } }) }
   const openEdit = (u) => {
     setError('')
-    setEditing({ mode: 'edit', values: { ...u, password: '', ternCode: u.ternCode || OPERATOR_TENANT } })
+    setEditing({
+      mode: 'edit',
+      values: {
+        ...u,
+        password: '',
+        ternCode: u.ternCode || OPERATOR_TENANT,
+        permissionGroupId: u.permissionGroupId ?? 0,
+        useCustomMenus: Array.isArray(u.customMenus),
+        customMenus: u.customMenus ?? [],
+      },
+    })
   }
 
   /** Run a mutation, then re-read the list so the table matches the server. */
@@ -87,6 +105,9 @@ export default function UserManagement() {
       role: values.role,
       approveLevel: Number(values.approveLevel) || 0,
       ternCode: values.ternCode,
+      permissionGroupId: Number(values.permissionGroupId) || 0,
+      useCustomMenus: !!values.useCustomMenus,
+      customMenus: values.useCustomMenus ? values.customMenus : null,
     }
     if (values.password) payload.password = values.password
 
@@ -165,6 +186,17 @@ export default function UserManagement() {
                 { key: 'username', label: 'Username' },
                 { key: 'role', label: 'Role', render: (r) => <span className={`pill role-${r.role}`}>{t(roleLabel(r.role))}</span> },
                 { key: 'approveLevel', label: 'Member approval', render: (r) => (r.approveLevel ? <span className="pill visitor">{t(approveLevelLabel(r.approveLevel))}</span> : <span className="muted">{t('View only')}</span>) },
+                {
+                  key: 'permission',
+                  label: 'Permission',
+                  render: (r) => (r.role === 'admin'
+                    ? <span className="muted">{t('Every menu')}</span>
+                    : Array.isArray(r.customMenus)
+                      ? <span className="pill warn">{t('Own menus')} ({r.customMenus.length})</span>
+                      : r.permissionGroupId
+                        ? <span className="pill visitor">{groupName(r.permissionGroupId) ?? `#${r.permissionGroupId}`}</span>
+                        : <span className="muted">{t('Default menus')}</span>),
+                },
                 { key: 'tenantName', label: 'Tenant', render: (r) => r.tenantName || (r.ternCode && r.ternCode !== OPERATOR_TENANT ? r.ternCode : t('Whole property')) },
                 { key: 'email', label: 'Email', render: (r) => r.email || '—' },
                 { key: 'active', label: 'Status', render: (r) => <span className={`pill ${r.active ? 'ok' : 'inside'}`}>{t(r.active ? 'Active' : 'Disabled')}</span> },
@@ -212,6 +244,7 @@ export default function UserManagement() {
             mode={editing.mode}
             error={error}
             tenants={tenants}
+            perms={perms.data}
             onChange={(patch) => setEditing((e) => ({ ...e, values: { ...e.values, ...patch } }))}
           />
         )}
@@ -230,7 +263,7 @@ export default function UserManagement() {
   )
 }
 
-function UserForm({ values, mode, error, tenants, onChange }) {
+function UserForm({ values, mode, error, tenants, perms, onChange }) {
   const { t } = useLang()
   return (
     <div className="form-grid">
@@ -275,6 +308,46 @@ function UserForm({ values, mode, error, tenants, onChange }) {
         <label>{t('Email')}</label>
         <input className="input" type="email" value={values.email ?? ''} onChange={(e) => onChange({ email: e.target.value })} />
         <small className="muted">{t('CRM and high authority accounts get an e-mail here when a member request waits for them.')}</small>
+      </div>
+
+      <div className="field span-2">
+        <label>{t('Permission group (menus)')}</label>
+        {values.role === 'admin' ? (
+          <small className="muted">{t('Administrators always see every menu.')}</small>
+        ) : perms?.ready === false ? (
+          <small className="muted">{t('The permission tables are missing — run StampAPI/Scripts/2026-11-21_MemberExcelImportAndDashboardPermission.sql first.')}</small>
+        ) : (
+          <>
+            <select
+              className="select"
+              value={values.permissionGroupId ?? 0}
+              disabled={values.useCustomMenus}
+              onChange={(e) => onChange({ permissionGroupId: Number(e.target.value) })}
+            >
+              <option value={0}>{t('No group — every menu but Administration')}</option>
+              {(perms?.groups ?? []).map((g) => (
+                <option key={g.id} value={g.id}>{g.name}{g.active ? '' : ` (${t('Disabled')})`}</option>
+              ))}
+            </select>
+            <label className="perm-menu" style={{ marginTop: 6 }}>
+              <input
+                type="checkbox"
+                checked={!!values.useCustomMenus}
+                onChange={(e) => onChange({
+                  useCustomMenus: e.target.checked,
+                  // Start the own list from what the user sees now.
+                  customMenus: e.target.checked && !values.customMenus?.length
+                    ? [...((perms?.groups ?? []).find((g) => g.id === values.permissionGroupId)?.menus ?? perms?.defaultMenus ?? [])]
+                    : values.customMenus,
+                })}
+              />
+              <span>{t('Own menu list for this user (instead of the group)')}</span>
+            </label>
+            {values.useCustomMenus && (
+              <MenuPicker menus={perms?.menus} value={values.customMenus} onChange={(customMenus) => onChange({ customMenus })} />
+            )}
+          </>
+        )}
       </div>
 
       <div className="field span-2">

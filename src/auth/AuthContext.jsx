@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { ApiError, authApi, getToken, setToken, setUnauthorizedHandler } from '../lib/api.js'
 import { canAdmin, canOperate } from '../lib/roles.js'
+import { allowedMenus } from '../nav.js'
 
 const AuthContext = createContext(null)
 
@@ -96,6 +97,8 @@ export function AuthProvider({ children }) {
     canAdmin: canAdmin(user?.role),
     /** Tenant accounts only ever see their own transactions — the API enforces it. */
     isTenantScoped: !!user?.isTenantScoped,
+    /** Menu keys (routes) this account may open — permission group / own list; admin = all. */
+    menus: allowedMenus(user, canAdmin(user?.role)),
   }), [user, restoring, login, signOut, refresh, changePassword, updateEmail])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

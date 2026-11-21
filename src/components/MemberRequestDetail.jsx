@@ -54,7 +54,7 @@ function TargetInfo({ req }) {
   ].filter(Boolean).join(' / ')
   return (
     <section className="ma-section">
-      <h4>{t(req.requestType === TYPE.DELETE ? 'Member to delete' : 'Member to be replaced')}</h4>
+      <h4>{t(req.requestType === TYPE.DELETE ? 'Member to delete' : req.requestType === TYPE.UPDATE ? 'Member to change' : 'Member to be replaced')}</h4>
       <Info
         items={[
           ['Customer code', tg.customerCode],
@@ -65,7 +65,9 @@ function TargetInfo({ req }) {
         ]}
       />
       <p className="muted ma-hint">
-        {t('On approval the rights and cards of this member expire — the records are kept, not deleted.')}
+        {t(req.requestType === TYPE.UPDATE
+          ? 'On approval this member is changed in place — the customer code stays; the listed vehicles replace those of the same type.'
+          : 'On approval the rights and cards of this member expire — the records are kept, not deleted.')}
       </p>
     </section>
   )
@@ -77,17 +79,25 @@ function GrantInfo({ req }) {
   const g = req.grant
   if (!g) return null
   const billing = BILLING.find((b) => b.value === g.billingType)?.label
+  const motorBilling = g.motorBillingType && g.motorBillingType !== g.billingType
+    ? BILLING.find((b) => b.value === g.motorBillingType)?.label
+    : null
+  const motorPeriod = g.motorStartDate && (g.motorStartDate !== g.startDate || g.motorExpireDate !== g.expireDate)
   return (
     <section className="ma-section">
       <h4>{t('Granted parking right')}</h4>
       <Info
         items={[
+          g.carRightLabel && ['Car member type (Excel)', g.carRightLabel],
           g.carContactId && ['Car contract', `${g.carContactName} · ${contactTypeLabel(g.carContactType)}`],
           g.carContactId && ['Car monthly fee', fmtBaht(g.carMemberFee)],
+          g.motorRightLabel && ['Motorcycle member type (Excel)', g.motorRightLabel],
           g.motorContactId && ['Motorcycle contract', `${g.motorContactName} · ${contactTypeLabel(g.motorContactType)}`],
           g.motorContactId && ['Motorcycle monthly fee', fmtBaht(g.motorMemberFee)],
           ['Billing', billing ? t(billing) : '—'],
+          motorBilling && ['Motorcycle billing', t(motorBilling)],
           ['Usage period', `${fmtDay(g.startDate)} – ${fmtDay(g.expireDate)}`],
+          motorPeriod && ['Motorcycle period', `${fmtDay(g.motorStartDate)} – ${fmtDay(g.motorExpireDate)}`],
         ]}
       />
     </section>
@@ -316,7 +326,7 @@ export default function MemberRequestDetail({ requestId, stage, canAct, lock, on
   const locked = !!lock?.locked
   const today = serverToday(lock)
   const isDelete = req?.requestType === TYPE.DELETE
-  const granting = actionable && stage.step === STEP.BUILDING && !isDelete
+  const granting = actionable && stage.step === STEP.BUILDING && !isDelete && req?.requestType !== TYPE.UPDATE
   // The high authority step: a start date that has already passed moves to the approval day.
   const startMoves = actionable && !granting && !isDelete && !!ymd(req?.startDate) && ymd(req.startDate) < today
   // The approve that applies the request: high authority always, CRM when the
@@ -324,7 +334,9 @@ export default function MemberRequestDetail({ requestId, stage, canAct, lock, on
   const isFinal = stage.step === STEP.AUTHORITY || (!req?.requiresAuthority && !(granting && outside))
   const finalMessage = isDelete
     ? 'Approval retires the member immediately.'
-    : req?.requestType === TYPE.EXCHANGE
+    : req?.requestType === TYPE.UPDATE
+      ? 'Approval changes the member immediately.'
+      : req?.requestType === TYPE.EXCHANGE
       ? 'Approval retires the old member and creates the new one immediately.'
       : 'Final approval creates the member immediately.'
   const needsReason = !remark.trim()
@@ -462,7 +474,7 @@ export default function MemberRequestDetail({ requestId, stage, canAct, lock, on
                   ['Email', member.email],
                   ['ID card / reference', member.idCard],
                   ['Submitted by', `${req.submittedBy?.byName || req.submittedBy?.byUsername || '—'} · ${fmtDateTime(req.submittedAt)}`],
-                  ['Request type', `${t(TYPE_META[req.requestType]?.label ?? req.requestType)}${req.source === 'EXCEL' ? ` · ${t('Excel import')}` : ''}`],
+                  ['Request type', `${t(TYPE_META[req.requestType]?.label ?? req.requestType)}${req.source === 'EXCEL' ? ` · ${t('Excel import')}${req.importRow ? ` (${t('row')} ${req.importRow})` : ''}` : ''}`],
                   ['Requested right', t(RIGHT_LABEL[req.requestedRight] ?? req.requestedRight)],
                   !isDelete && ['Requested period', `${fmtDay(req.startDate)} – ${fmtDay(req.expireDate)}`],
                   member.hasLicenseImage && [

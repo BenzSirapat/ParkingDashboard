@@ -10,7 +10,10 @@ import './styles/index.css'
 
 // Vite injects BASE_URL from `base` in vite.config.js (driven by VITE_BASE).
 // A relative base ('./') has no meaning for the router, so fall back to root.
-const basename = import.meta.env.BASE_URL.startsWith('/') ? import.meta.env.BASE_URL : '/'
+// The trailing slash is dropped so both /dashboard and /dashboard/ match — with
+// "/dashboard/" the router renders nothing for a bare /dashboard.
+const base = import.meta.env.BASE_URL.startsWith('/') ? import.meta.env.BASE_URL : '/'
+const basename = base.length > 1 ? base.replace(/\/+$/, '') : '/'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
